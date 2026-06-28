@@ -1,0 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Special+Elite&family=Oswald:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Variables ─────────────────────────────────────────── */
+:root {
+  --bg:       #0a0a0a;
+  --surface:  rgba(0,0,0,0.82);
+  --border:   rgba(255,255,255,0.12);
+  --gold:     #f0c040;
+  --gold-dim: #a07c20;
+  --text:     #f5f0e8;
+  --text-2:   #b0a898;
+  --text-3:   #605850;
+
+  --font-title: 'Bangers', cursive;
+  --font-body:  'Special Elite', 'Courier New', monospace;
+  --font-ui:    'Oswald', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Tipografía ─────────────────────────────────────────── */
+.title     { font-family: var(--font-title); letter-spacing: 3px; line-height: 1; }
+.ui        { font-family: var(--font-ui); letter-spacing: 1px; }
+.body-text { font-family: var(--font-body); line-height: 1.75; }
+
+.label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ─── Layout ─────────────────────────────────────────────── */
+.container { max-width: 860px; margin: 0 auto; padding: 0 32px; }
+
+/* ─── Panel con fondo semitransparente ───────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  padding: 36px 40px;
+}
+
+/* ─── Botón MAIN ─────────────────────────────────────────── */
+.btn-main {
+  display: inline-block;
+  padding: 18px 44px;
+  background: var(--gold);
+  color: #0a0a0a;
+  font-family: var(--font-title);
+  font-size: 26px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  border: 3px solid #0a0a0a;
+  box-shadow: 4px 4px 0 #0a0a0a;
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+  text-align: center;
+  line-height: 1;
+}
+.btn-main:hover  { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 #0a0a0a; }
+.btn-main:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 #0a0a0a; }
+
+/* ─── Botón SECONDARY ────────────────────────────────────── */
+.btn-secondary {
+  display: inline-block;
+  padding: 12px 24px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ─── Input ──────────────────────────────────────────────── */
+.inp {
+  width: 100%;
+  background: rgba(0,0,0,0.5);
+  border: 2px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 22px;
+  padding: 14px 18px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.inp:focus        { border-color: var(--gold); }
+.inp::placeholder { color: var(--text-3); }
+
+/* ─── Tag / chip ─────────────────────────────────────────── */
+.tag {
+  display: inline-block;
+  padding: 6px 16px;
+  border: 2px solid var(--border);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+/* ─── Score block ────────────────────────────────────────── */
+.score-block {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px 16px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.score-n { font-family: var(--font-title); font-size: 48px; color: var(--gold); line-height: 1; margin-bottom: 8px; letter-spacing: 2px; }
+.score-l { font-family: var(--font-ui); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-3); }
+
+/* ─── Veredicto ──────────────────────────────────────────── */
+.veredicto {
+  font-family: var(--font-body);
+  font-size: clamp(18px,2.5vw,24px);
+  line-height: 1.8;
+  color: var(--text);
+  border-left: 3px solid var(--gold);
+  padding-left: 24px;
+}
+
+/* ─── Reveal on scroll ───────────────────────────────────── */
+.reveal-block {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.6s ease var(--delay,0ms), transform 0.6s ease var(--delay,0ms);
+}
+.reveal-block.revealed { opacity: 1; transform: translateY(0); }
+
+/* ─── Sección del informe ────────────────────────────────── */
+.inf-section { padding: 44px 0; border-bottom: 1px solid var(--border); }
+.inf-label {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 14px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 20px;
+}
+
+/* ─── Animación entrada ──────────────────────────────────── */
+@keyframes up {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.up { animation: up 0.45s ease forwards; }
+
+/* ─── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #333; }

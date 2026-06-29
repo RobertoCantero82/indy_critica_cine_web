@@ -6,14 +6,14 @@
 
 /* ─── Variables ─────────────────────────────────────────── */
 :root {
-  --bg:       #0a0a0a;
-  --surface:  rgba(0,0,0,0.82);
-  --border:   rgba(255,255,255,0.12);
+  --bg:       #080706;
+  --surface:  rgba(15, 12, 10, 0.45);
+  --border:   rgba(255, 255, 255, 0.15);
   --gold:     #f0c040;
   --gold-dim: #a07c20;
   --text:     #f5f0e8;
-  --text-2:   #b0a898;
-  --text-3:   #605850;
+  --text-2:   #d0c8b8;
+  --text-3:   #8a8075;
 
   --font-title: 'Bangers', cursive;
   --font-body:  'Special Elite', 'Courier New', monospace;
@@ -31,6 +31,7 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* ─── Tipografía ─────────────────────────────────────────── */
@@ -53,61 +54,95 @@ body {
 /* ─── Panel con fondo semitransparente ───────────────────── */
 .panel {
   background: var(--surface);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(8px);
+  border: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: inset 0 0 0 1px var(--border), 0 16px 40px rgba(0, 0, 0, 0.6);
   padding: 36px 40px;
 }
 
-/* ─── Botón MAIN ─────────────────────────────────────────── */
+/* ─── Botón MAIN (LIQUID GLASS) ─────────────────────────── */
 .btn-main {
   display: inline-block;
   padding: 18px 44px;
-  background: var(--gold);
-  color: #0a0a0a;
+  background: linear-gradient(180deg, rgba(240, 192, 64, 0.16) 0%, rgba(240, 192, 64, 0.05) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--gold);
   font-family: var(--font-title);
   font-size: 26px;
   letter-spacing: 4px;
   text-transform: uppercase;
-  border: 3px solid #0a0a0a;
-  box-shadow: 4px 4px 0 #0a0a0a;
+  border: 1px solid rgba(240, 192, 64, 0.45);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(240, 192, 64, 0.05);
+  border-radius: 9999px;
   cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.08s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
   line-height: 1;
+  text-shadow: 0 0 8px rgba(240, 192, 64, 0.3);
 }
-.btn-main:hover  { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 #0a0a0a; }
-.btn-main:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 #0a0a0a; }
+.btn-main:hover  {
+  background: linear-gradient(180deg, rgba(240, 192, 64, 0.24) 0%, rgba(240, 192, 64, 0.1) 100%);
+  border-color: rgba(240, 192, 64, 0.65);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.35), 0 12px 40px rgba(240, 192, 64, 0.18);
+  transform: translateY(-2px);
+}
+.btn-main:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+}
 
-/* ─── Botón SECONDARY ────────────────────────────────────── */
+/* ─── Botón SECONDARY (LIQUID GLASS) ─────────────────────── */
 .btn-secondary {
   display: inline-block;
   padding: 12px 24px;
-  background: transparent;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: var(--text-2);
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 2px;
   text-transform: uppercase;
-  border: 2px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.12s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 4px 16px rgba(0, 0, 0, 0.3);
 }
-.btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+.btn-secondary:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 8px 24px rgba(240, 192, 64, 0.1);
+  transform: translateY(-1px);
+}
+.btn-secondary:active {
+  transform: translateY(1px);
+}
 
 /* ─── Input ──────────────────────────────────────────────── */
 .inp {
   width: 100%;
-  background: rgba(0,0,0,0.5);
-  border: 2px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 22px;
   padding: 14px 18px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.02);
 }
-.inp:focus        { border-color: var(--gold); }
+.inp:focus        { 
+  border-color: var(--gold); 
+  background: rgba(255, 255, 255, 0.06); 
+  box-shadow: 0 0 12px rgba(240, 192, 64, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
 .inp::placeholder { color: var(--text-3); }
 
 /* ─── Tag / chip ─────────────────────────────────────────── */
@@ -176,3 +211,135 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: #333; }
+
+/* ─── MODAL STORY DE INDY ───────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease forwards;
+  padding: 20px;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: none;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 24px;
+  max-width: 550px;
+  width: 100%;
+  padding: 36px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 25px 60px rgba(0, 0, 0, 0.85);
+  position: relative;
+  animation: scaleUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* ─── GRID DEL INFORME RESPONSIVO ────────────────────────── */
+.informe-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .informe-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* ─── REPORT CARD (MÓDULO DE INFORME MODERNO) ────────────── */
+.report-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 22px 24px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
+}
+
+.report-card:hover {
+  transform: translateY(-4px);
+  box-shadow: inset 0 0 0 1.5px rgba(240, 192, 64, 0.45), 0 12px 40px 0 rgba(0, 0, 0, 0.55), 0 0 15px rgba(240, 192, 64, 0.1);
+}
+
+/* ─── VEREDICTO DE NEÓN ──────────────────────────────────── */
+.badge-si {
+  display: inline-block;
+  padding: 8px 24px;
+  border-radius: 9999px;
+  font-family: var(--font-title);
+  font-size: 26px;
+  letter-spacing: 2px;
+  background: rgba(76, 175, 80, 0.12);
+  color: #66bb6a;
+  border: 1.5px solid rgba(76, 175, 80, 0.35);
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.15);
+  text-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+
+.badge-no {
+  display: inline-block;
+  padding: 8px 24px;
+  border-radius: 9999px;
+  font-family: var(--font-title);
+  font-size: 26px;
+  letter-spacing: 2px;
+  background: rgba(229, 57, 53, 0.12);
+  color: #ef5350;
+  border: 1.5px solid rgba(229, 57, 53, 0.35);
+  box-shadow: 0 0 15px rgba(229, 57, 53, 0.15);
+  text-shadow: 0 0 8px rgba(229, 57, 53, 0.4);
+}
+
+/* ─── TARJETAS DE PUNTUACIÓN INDIVIDUALES ────────────────── */
+.score-item {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px 8px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.score-item:hover {
+  border-color: rgba(240, 192, 64, 0.2);
+  background: rgba(240, 192, 64, 0.03);
+  transform: translateY(-2px);
+}
+
+/* ─── BANNER ALERTA INDY ─────────────────────────────────── */
+.indy-alert-banner {
+  background: linear-gradient(90deg, rgba(240, 192, 64, 0.08) 0%, rgba(240, 192, 64, 0.01) 100%);
+  border-left: 4px solid var(--gold);
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.03);
+  transition: background 0.3s;
+}
+
+.indy-alert-banner:hover {
+  background: linear-gradient(90deg, rgba(240, 192, 64, 0.12) 0%, rgba(240, 192, 64, 0.02) 100%);
+}

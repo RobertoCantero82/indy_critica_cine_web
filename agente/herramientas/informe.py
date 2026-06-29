@@ -39,9 +39,16 @@ class Informe:
                 puntuacion_publico REAL,
                 veredicto         TEXT,
                 informe_completo  TEXT,
-                fecha_consulta    TEXT
+                fecha_consulta    TEXT,
+                pegatina_url      TEXT
             )
         """)
+
+        # migración: añadir columna si la db ya existía sin ella
+        try:
+            cursor.execute("ALTER TABLE informes ADD COLUMN pegatina_url TEXT")
+        except Exception:
+            pass
 
         conexion.commit()
         conexion.close()
@@ -89,6 +96,7 @@ class Informe:
         puntuacion_publico: float,
         veredicto: str,
         informe_completo: dict,
+        pegatina_url: str = None,
     ) -> dict:
         """
         herramienta 3 del agente indy.
@@ -105,8 +113,8 @@ class Informe:
                 INSERT INTO informes (
                     titulo, anio, perfil_usuario,
                     puntuacion_critica, puntuacion_publico,
-                    veredicto, informe_completo, fecha_consulta
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    veredicto, informe_completo, fecha_consulta, pegatina_url
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 titulo,
                 anio,
@@ -116,6 +124,7 @@ class Informe:
                 veredicto,
                 json.dumps(informe_completo, ensure_ascii=False),
                 fecha,
+                pegatina_url,
             ))
 
             conexion.commit()

@@ -166,13 +166,16 @@ Devuelve ÚNICAMENTE una de esas cuatro opciones exactas, copiada tal cual. Sin 
 
         # fallback: el llm intenta inferirlo
         prompt = f"""
-La película es "{datos['titulo']}" ({datos['anio']}).
-Géneros: {', '.join(datos['generos'])}
+        La película es "{datos['titulo']}" ({datos['anio']}).
+        Géneros: {', '.join(datos['generos'])}
+        Director: {datos.get('director', 'desconocido')}
 
-¿Tiene escenas post-créditos? Responde SOLO con una de estas tres opciones:
-sí / no / desconocido
-Sin explicaciones ni texto adicional.
-"""
+        ¿Tiene escenas durante o después de los créditos finales? 
+        Recuerda que la inmensa mayoría de las películas dramáticas, antiguas (anteriores a los 2000) o clásicas NO tienen post-créditos. Las películas modernas de superhéroes, Marvel, DC o ciertas comedias/sagas de acción SÍ suelen tener.
+        
+        Responde estrictamente con una sola palabra: sí o no o desconocido.
+        Sin puntos, sin explicaciones ni rodeos.
+        """
         respuesta = self._llamar_llm(prompt, max_tokens=10).lower()
         if "sí" in respuesta or "si" in respuesta:
             return "sí"
@@ -213,25 +216,34 @@ Solo el JSON, sin explicaciones.
     # — sección 6: snack —
 
     def _generar_snack(self, datos: dict) -> dict:
-        """el llm elige el snack perfecto para esta película."""
+        """el llm elige el snack perfecto (comida + bebida) para esta película."""
         prompt = f"""
-La película es "{datos['titulo']}" ({datos['anio']}).
-Géneros: {', '.join(datos['generos'])}
-Director: {datos.get('director', 'desconocido')}
+        La película es "{datos['titulo']}" ({datos['anio']}).
+        Géneros: {', '.join(datos['generos'])}
+        Director: {datos.get('director', 'desconocido')}
 
-Elige el snack perfecto para ver esta película. Sé creativo y específico — nada de "palomitas" a secas.
-Piensa en el tono de la película, su género, su época o su director para encontrar algo original.
-Ejemplos del nivel de creatividad que buscamos: "gin tonic con hielo porque la película te va a dejar frío",
-"chuches ácidas para los giros de guion", "whisky solo como el protagonista".
-Justifícalo en una frase corta con humor e ingenio.
-Devuelve SOLO un JSON con esta estructura exacta, sin texto adicional:
-{{"snack": "...", "justificacion": "..."}}
-"""
+        Recomienda el maridaje de snacks perfecto para ver esta película, incluyendo:
+        1. Una COMIDA tipo snack de cine (ej. palomitas saborizadas, patatas de bolsa exóticas, gominolas/chuches temáticas, frutos secos, chocolates).
+        2. Una BEBIDA (ej. un refresco especial, cerveza artesanal, vino selecto, un cóctel temático).
+        
+        Sé extremadamente creativo, ingenioso y divertido. Relaciona los ingredientes o el estilo del snack con la trama, el tono, el director o la época de la película.
+        
+        Devuelve SOLO un JSON con esta estructura exacta, sin texto adicional:
+        {{
+          "comida": "nombre del snack de comida (ej: Palomitas con sabor a curry y coco)",
+          "bebida": "nombre de la bebida (ej: Refresco de lima con gas azul neón)",
+          "justificacion": "Una frase ingeniosa y humorística explicando por qué este combo es el maridaje perfecto para esta peli"
+        }}
+        """
         try:
-            raw = self._llamar_llm(prompt, max_tokens=150)
+            raw = self._llamar_llm(prompt, max_tokens=180)
             return json.loads(raw)
         except Exception:
-            return {"snack": "palomitas con mantequilla", "justificacion": "el clásico que nunca falla."}
+            return {
+                "comida": "Palomitas de maíz clásicas con mantequilla",
+                "bebida": "Refresco de cola bien frío",
+                "justificacion": "El combo de toda la vida para disfrutar del mejor cine sin complicaciones."
+            }
 
     # — sección 7: alerta indy —
 

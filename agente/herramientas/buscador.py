@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from dotenv import load_dotenv
 from pathlib import Path
 from groq import Groq
+from bs4 import BeautifulSoup
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 
@@ -23,7 +24,7 @@ class Buscador(Herramienta):
     def __init__(self):
         self.omdb_key = os.getenv("OMDB_API_KEY")
         self.tmdb_key = os.getenv("TMDB_API_KEY")
-        self.streaming_key = os.getenv("STREAMING_API_KEY")
+        self.streaming_key = os.getenv("STREAMING_API_KEY") or os.getenv("RAPIDAPI_KEY")
         self.dogdie_key = os.getenv("DOESTHEDOGDIE_API_KEY")
         self.youtube_key = os.getenv("YOUTUBE_API_KEY")
         self.groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -133,12 +134,15 @@ class Buscador(Herramienta):
         except Exception as e:
             return {"ok": False, "error": f"error de conexión — {str(e)}"}
 
-    def _consultar_tmdb(self, titulo: str) -> dict:
+    def _consultar_tmdb(self, titulo: str, anio: str = None) -> dict:
         """sinopsis en español y compositor desde tmdb."""
         try:
+            params = {"api_key": self.tmdb_key, "query": titulo, "language": "es-ES"}
+            if anio:
+                params["year"] = str(anio)[:4]
             busqueda = requests.get(
                 "https://api.themoviedb.org/3/search/movie",
-                params={"api_key": self.tmdb_key, "query": titulo, "language": "es-ES"},
+                params=params,
                 timeout=5,
             )
             resultados = busqueda.json().get("results", [])
@@ -161,11 +165,15 @@ class Buscador(Herramienta):
                     compositor = persona.get("name")
                     break
 
+            poster_path = datos.get("poster_path")
+            poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+
             return {
                 "ok": True,
                 "sinopsis": datos.get("overview"),
                 "compositor": compositor,
                 "titulo_original": datos.get("original_title"),
+                "poster_url": poster_url,
             }
 
         except Exception as e:
@@ -183,6 +191,8 @@ class Buscador(Herramienta):
                 params={"title": titulo, "country": "es", "show_type": "movie"},
                 timeout=10,
             )
+            if respuesta.status_code != 200:
+                return {"ok": False, "error": f"status {respuesta.status_code}"}
             datos = respuesta.json()
             plataformas = []
             # nueva estructura v4: lista de shows con streamingOptions
@@ -190,31 +200,63 @@ class Buscador(Herramienta):
                 opciones = show.get("streamingOptions", {}).get("es", [])
                 for opcion in opciones:
                     servicio = opcion.get("service", {}).get("name", "")
-                    if servicio and servicio not in plataformas:
-                        plataformas.append(servicio)
+                    link = opcion.get("link", "")
+                    if servicio:
+                        # Evitar duplicados por nombre de servicio
+                        if not any(p["nombre"] == servicio for p in plataformas):
+                            plataformas.append({
+                                "nombre": servicio,
+                                "url": link or opcion.get("service", {}).get("homePage", "")
+                            })
 
             return {"ok": True, "plataformas": plataformas}
 
         except Exception as e:
             return {"ok": False, "error": f"error de conexión — {str(e)}"}
 
-    def _consultar_post_creditos(self, titulo: str) -> dict:
+    def _consultar_post_creditos(self, titulo: str, anio: int = None) -> dict:
         """indica si la película tiene escenas post-créditos."""
         try:
-            titulo_url = titulo.lower().replace(" ", "-")
+            # Eliminar caracteres especiales para la URL
+            titulo_limpio = "".join(c for c in titulo.lower() if c.isalnum() or c == " ").strip()
+            titulo_url = titulo_limpio.replace(" ", "-")
+            url = f"https://aftercredits.com/movie/{titulo_url}/"
             respuesta = requests.get(
-                f"https://aftercredits.com/movie/{titulo_url}/",
+                url,
                 timeout=5,
                 headers={"User-Agent": "Mozilla/5.0"},
             )
 
-            if respuesta.status_code != 200:
-                return {"ok": False, "error": "página no encontrada"}
+            # Si da 404, intentar con el año si está disponible
+            if respuesta.status_code == 404 and anio:
+                url_con_anio = f"https://aftercredits.com/movie/{titulo_url}-{anio}/"
+                respuesta = requests.get(
+                    url_con_anio,
+                    timeout=5,
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
 
-            texto = respuesta.text.lower()
-            if "yes" in texto or "there is" in texto:
+            if respuesta.status_code != 200:
+                return {"ok": False, "error": f"status {respuesta.status_code}"}
+
+            soup = BeautifulSoup(respuesta.text, "html.parser")
+            during_val = "desconocido"
+            after_val = "desconocido"
+
+            for p in soup.find_all("p"):
+                text = p.get_text()
+                if "during credits?" in text.lower():
+                    strong = p.find("strong") or p.find("b")
+                    if strong:
+                        during_val = strong.get_text().strip().lower()
+                if "after credits?" in text.lower():
+                    strong = p.find("strong") or p.find("b")
+                    if strong:
+                        after_val = strong.get_text().strip().lower()
+
+            if "yes" in during_val or "yes" in after_val:
                 return {"ok": True, "post_creditos": "sí"}
-            elif "no" in texto or "there are no" in texto:
+            elif "no" in during_val and "no" in after_val:
                 return {"ok": True, "post_creditos": "no"}
             else:
                 return {"ok": True, "post_creditos": "desconocido"}
@@ -311,6 +353,8 @@ class Buscador(Herramienta):
             "streaming_espana": [],
             "alerta_indy": False,
             "youtube_video_id": None,
+            "youtube_es_lofi": False,
+            "poster_url": None,
             "errores": [],
         }
 
@@ -345,11 +389,12 @@ class Buscador(Herramienta):
             "puntuacion_publico": omdb["puntuacion_publico"],
         })
 
-        tmdb = self._consultar_tmdb(titulo)
+        tmdb = self._consultar_tmdb(resultado["titulo"], resultado.get("anio"))
         if tmdb["ok"]:
             if tmdb.get("sinopsis"):
                 resultado["sinopsis"] = tmdb["sinopsis"]
             resultado["compositor"] = tmdb.get("compositor")
+            resultado["poster_url"] = tmdb.get("poster_url")  # solo tmdb, sin CORS
         else:
             resultado["errores"].append(f"tmdb: {tmdb['error']}")
 
@@ -359,7 +404,7 @@ class Buscador(Herramienta):
         else:
             resultado["errores"].append(f"streaming: {streaming['error']}")
 
-        post = self._consultar_post_creditos(resultado["titulo"])
+        post = self._consultar_post_creditos(resultado["titulo"], resultado.get("anio"))
         if post["ok"]:
             resultado["post_creditos"] = post["post_creditos"]
         else:
@@ -371,11 +416,17 @@ class Buscador(Herramienta):
         else:
             resultado["errores"].append(f"doesthedogdie: {perro['error']}")
 
-        # youtube — id del video de la banda sonora
+        # youtube — id del video de la banda sonora; si no hay, fallback lofi de cine
         yt = self._consultar_youtube(resultado["titulo"], resultado.get("compositor"))
         if yt["ok"]:
             resultado["youtube_video_id"] = yt["video_id"]
+            resultado["youtube_es_lofi"] = False
         else:
             resultado["errores"].append(f"youtube: {yt['error']}")
+            genero = resultado["generos"][0] if resultado.get("generos") else "film"
+            yt_lofi = self._consultar_youtube(f"lofi {genero} cinematic beats relaxing")
+            if yt_lofi["ok"]:
+                resultado["youtube_video_id"] = yt_lofi["video_id"]
+                resultado["youtube_es_lofi"] = True
 
         return resultado

@@ -3,6 +3,7 @@
 from agente.herramientas.buscador import Buscador
 from agente.herramientas.veredicto import Veredicto
 from agente.herramientas.informe import Informe
+from agente.herramientas.pegatina import Pegatina
 from agente.sistema import MENSAJES_CARGA
 
 
@@ -16,10 +17,10 @@ class IndyAgent:
     MAX_ITERACIONES = 10
 
     def __init__(self):
-        # instancio las tres herramientas
         self.buscador = Buscador()
         self.veredicto = Veredicto()
         self.informe = Informe()
+        self.pegatina = Pegatina()
 
         # estado de la sesión actual
         self.titulo = None
@@ -189,6 +190,25 @@ class IndyAgent:
 
         self.informe_completo = informe
         self.informe_completo["guardado"] = False
+        self.informe_completo["poster_url"] = self.datos_pelicula.get("poster_url")
+
+        # Generar pegatina coleccionable de la película
+        try:
+            res_pegatina = self.pegatina.ejecutar(
+                titulo=self.datos_pelicula.get("titulo"),
+                generos=self.datos_pelicula.get("generos", []),
+                director=self.datos_pelicula.get("director", "")
+            )
+            if res_pegatina.get("ok"):
+                self.informe_completo["pegatina_url"] = res_pegatina["pegatina_url"]
+            else:
+                self.informe_completo["pegatina_url"] = None
+                if res_pegatina.get("error"):
+                    self.errores.append(f"Error en pegatina: {res_pegatina['error']}")
+        except Exception as e:
+            self.informe_completo["pegatina_url"] = None
+            self.errores.append(f"Excepción al generar pegatina: {str(e)}")
+
         return True
 
     def _actuar_guardar(self) -> bool:
@@ -208,6 +228,7 @@ class IndyAgent:
             puntuacion_publico=critica_vs_publico.get("puntuacion_publico"),
             veredicto=self.informe_completo.get("veredicto", ""),
             informe_completo=self.informe_completo,
+            pegatina_url=self.informe_completo.get("pegatina_url"),
         )
 
         if not resultado["ok"]:
@@ -303,6 +324,8 @@ class IndyAgent:
                     "cache": False,
                     "informe": self.informe_completo,
                     "youtube_video_id": self.datos_pelicula.get("youtube_video_id") if self.datos_pelicula else None,
+                    "youtube_es_lofi": self.datos_pelicula.get("youtube_es_lofi", False) if self.datos_pelicula else False,
+                    "poster_url": self.datos_pelicula.get("poster_url") if self.datos_pelicula else None,
                     "errores_parciales": self.errores,
                     "log": self.log,
                 }

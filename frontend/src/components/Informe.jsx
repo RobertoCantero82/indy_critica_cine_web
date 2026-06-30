@@ -28,7 +28,7 @@ const BORDER = 'rgba(255,255,255,0.1)'
 function Label({ children }) {
   return (
     <p style={{
-      fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700,
+      fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700,
       letterSpacing: 3, textTransform: 'uppercase',
       color: GOLD, marginBottom: 14,
     }}>✦ {children}</p>
@@ -55,28 +55,10 @@ function Dato({ label, value, valueStyle }) {
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '10px 0', borderBottom: `1px solid ${BORDER}`,
     }}>
-      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: TEXT2, letterSpacing: 0.5 }}>{label}</span>
-      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color: TEXT, ...valueStyle }}>{value}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: TEXT2, letterSpacing: 0.5 }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: TEXT, ...valueStyle }}>{value}</span>
     </div>
   )
-}
-
-function Punt({ fuente, valor, sufijo, sub }) {
-  return (
-    <div className="score-item">
-      <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: TEXT2, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>{fuente}</p>
-      <p style={{ fontFamily: 'var(--font-title)', fontSize: 32, color: TEXT, lineHeight: 1, margin: '6px 0' }}>
-        {valor}{sufijo && <span style={{ fontSize: 12, color: GOLD }}>{sufijo}</span>}
-      </p>
-      <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: TEXT2, letterSpacing: 1 }}>{sub}</p>
-    </div>
-  )
-}
-
-function extraerVideoId(url) {
-  if (!url) return ''
-  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/)
-  return m ? m[1] : url
 }
 
 function girosANumero(texto) {
@@ -124,25 +106,23 @@ function getPlatformUrl(p) {
 }
 
 export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver, esSuerte }) {
-  const [masAbierto, setMasAbierto] = useState(false)
-
   const [textoVeredicto, setTextoVeredicto] = useState('')
 
   useEffect(() => {
     if (!informe) return;
     const FRASES_SI = [
-      "¡No te la puedes perder! 🍿",
-      "¡Dale al play y disfruta! 🎬",
-      "¡Una apuesta segura! 🚀",
-      "¡Cine en estado puro! ✨",
-      "¡Prepara las palomitas! 🍿"
+      "¡No te la puedes perder!",
+      "¡Dale al play y disfruta!",
+      "¡Una apuesta segura!",
+      "¡Cine en estado puro!",
+      "¡Prepara las palomitas!"
     ];
     const FRASES_NO = [
-      "¡No pierdas el tiempo! 🛑",
-      "¡Apaga la tele! 📺",
-      "¡Huye mientras puedas! 🏃",
-      "¡Mejor busca otra cosa! 🔍",
-      "¡Una pérdida de tiempo! ⏳"
+      "¡No pierdas el tiempo!",
+      "¡Apaga la tele!",
+      "¡Huye mientras puedas!",
+      "¡Mejor busca otra cosa!",
+      "¡Una pérdida de tiempo!"
     ];
 
     // Selección determinista según el título para mantener consistencia
@@ -164,9 +144,10 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
   const snack      = informe.snack || {}
   const plataformas  = informe.streaming_espana || []
   const alternativas = informe.alternativas || []
+  const tagsCuriosos = (informe.tags_curiosos || []).filter(t => !t.pregunta.toLowerCase().includes('muere el perro'))
   const giros      = girosANumero(informe.indice_giros)
   const bsVideoId      = videoId
-  const trailerVideoId = bs.url_youtube ? extraerVideoId(bs.url_youtube) : null
+  const trailerVideoId = informe.youtube_trailer_id || null
 
   if (esSuerte) {
     return (
@@ -188,7 +169,7 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
                 ? <img src={posterUrl} alt={informe.titulo_anio}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     onError={e => { e.target.style.display = 'none' }} />
-                : '🎬'}
+                : ''}
             </div>
             <div style={{ padding: '20px 24px' }}>
               <p style={{ fontFamily: 'var(--font-title)', fontSize: 24, color: TEXT, letterSpacing: 2, lineHeight: 1.3, marginBottom: 8 }}>
@@ -217,15 +198,26 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
             {/* Módulo 3: Banda Sonora */}
             {(bs.compositor || bs.album || bsVideoId) && (
               <Reveal className="report-card">
-                <Label>{esLofi ? '🎵 Lofi — sin banda sonora' : 'Banda Sonora'}</Label>
+                <Label>{esLofi ? 'Lofi — sin banda sonora' : 'Banda Sonora'}</Label>
                 {!esLofi && (bs.compositor || bs.album) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                    <span style={{ fontSize: 32 }}>🎵</span>
-                    <div>
-                      <p style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 16, color: TEXT, letterSpacing: 0.5 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{
+                        fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 16, color: TEXT, letterSpacing: 0.5,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
                         {bs.compositor || 'Compositor desconocido'}
                       </p>
-                      {bs.album && <p style={{ fontSize: 13, color: TEXT2, marginTop: 4 }}>{bs.album}</p>}
+                      {bs.album && (
+                        <p style={{
+                          fontSize: 13, color: TEXT2, marginTop: 4,
+                          display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {bs.album}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -243,7 +235,7 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
         {/* Acciones */}
         <div style={{
           display: 'flex', justifyContent: 'center', alignItems: 'center',
-          paddingTop: 40, marginTop: 40, borderTop: `1px solid ${BORDER}`,
+          paddingTop: 40, marginTop: 40,
         }}>
           <button onClick={onVolver} className="btn-main" style={{
             padding: '12px 28px', fontSize: 16, borderRadius: 12, textShadow: 'none'
@@ -261,7 +253,7 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
       <div className="informe-grid">
 
         {/* ════ COL IZQUIERDA: póster + banda sonora ════ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
           <Reveal className="report-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{
@@ -273,7 +265,7 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
                 ? <img src={posterUrl} alt={informe.titulo_anio}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     onError={e => { e.target.style.display = 'none' }} />
-                : '🎬'}
+                : ''}
             </div>
             <div style={{ padding: '12px 16px' }}>
               <p style={{ fontFamily: 'var(--font-title)', fontSize: 14, color: TEXT, letterSpacing: 1.5, lineHeight: 1.3 }}>
@@ -284,16 +276,27 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
 
 
           {(bs.compositor || bs.album || bsVideoId) && (
-            <Reveal className="report-card">
-              <Label>{esLofi ? '🎵 Lofi — sin banda sonora' : 'Banda Sonora'}</Label>
+            <Reveal className="report-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <Label>{esLofi ? 'Lofi — sin banda sonora' : 'Banda Sonora'}</Label>
               {!esLofi && (bs.compositor || bs.album) && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                  <span style={{ fontSize: 20 }}>🎵</span>
-                  <div>
-                    <p style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 13, color: TEXT }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{
+                      fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, color: TEXT,
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
                       {bs.compositor || 'Compositor desconocido'}
                     </p>
-                    {bs.album && <p style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>{bs.album}</p>}
+                    {bs.album && (
+                      <p style={{
+                        fontSize: 12, color: TEXT2, marginTop: 2,
+                        display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {bs.album}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -301,15 +304,15 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
                 <iframe width="100%" height="80"
                   src={`https://www.youtube.com/embed/${bsVideoId}?autoplay=1&controls=1`}
                   allow="autoplay; encrypted-media" allowFullScreen
-                  style={{ display: 'block', border: 'none', borderRadius: 6 }} title="Banda sonora" />
+                  style={{ display: 'block', border: 'none', borderRadius: 6, marginTop: 'auto' }} title="Banda sonora" />
               )}
             </Reveal>
           )}
 
         </div>
 
-        {/* ════ COL CENTRAL: veredicto + snack + dónde verla + alerta + alternativas ════ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* ════ COL CENTRAL: veredicto + snack + dónde verla + alternativas ════ */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
           <Reveal className="report-card">
             <Label>Veredicto de Indy</Label>
@@ -339,8 +342,7 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
                     <>
                       {snack.bebida && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 24 }}>🥤</span>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 15, color: TEXT }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, color: TEXT }}>
                             {snack.bebida}
                           </span>
                         </div>
@@ -349,16 +351,14 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
                         <span style={{ color: 'var(--gold)', fontWeight: 'bold', fontSize: 18, margin: '0 4px' }}>+</span>
                       )}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 24 }}>🍿</span>
-                        <span style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 15, color: TEXT }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, color: TEXT }}>
                           {snack.comida}
                         </span>
                       </div>
                     </>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 24 }}>🍿</span>
-                      <span style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 15, color: TEXT }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, color: TEXT }}>
                         {snack.snack}
                       </span>
                     </div>
@@ -373,7 +373,7 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
             </Reveal>
           )}
 
-          <Reveal className="report-card">
+          <Reveal className="report-card" style={{ flex: 1 }}>
             <Label>Dónde verla</Label>
             {plataformas.length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -385,10 +385,13 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
                       textDecoration: 'none',
                       display: 'inline-block',
                       padding: '6px 16px', borderRadius: 20,
-                      fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, letterSpacing: 1,
-                      background: i === 0 ? 'rgba(240, 192, 64, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                      fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, letterSpacing: 1,
+                      background: i === 0 ? 'rgba(240, 192, 64, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                      backdropFilter: 'blur(12px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(12px) saturate(180%)',
                       color: i === 0 ? 'var(--gold)' : TEXT2,
                       border: `1.5px solid ${i === 0 ? 'rgba(240, 192, 64, 0.4)' : BORDER}`,
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       cursor: 'pointer',
                     }}
@@ -413,13 +416,6 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
             )}
           </Reveal>
 
-          {informe.alerta_indy && (
-            <Reveal className="report-card indy-alert-banner">
-              <Label>🐾 Alerta Indy</Label>
-              <p style={{ fontSize: 14, color: TEXT2, lineHeight: 1.8 }}>{informe.alerta_indy}</p>
-            </Reveal>
-          )}
-
           {alternativas.length > 0 && (
             <Reveal className="report-card">
               <Label>Si no te convence, prueba esto</Label>
@@ -440,43 +436,19 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
         </div>
 
         {/* ════ COL DERECHA: datos + tráiler + banda sonora ════ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
-          <Reveal className="report-card">
-            <Label>Puntuaciones</Label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
-              <Punt fuente="Crítica"
-                valor={cvp.puntuacion_critica != null ? `${cvp.puntuacion_critica}` : '—'}
-                sufijo={cvp.puntuacion_critica != null ? '/10' : ''} sub="crítica" />
-              <Punt fuente="Público"
-                valor={cvp.puntuacion_publico != null ? `${cvp.puntuacion_publico}` : '—'}
-                sufijo={cvp.puntuacion_publico != null ? '/10' : ''} sub="audiencia" />
-              <Punt fuente="Gana"
-                valor={cvp.quien_gana === 'publico' ? 'Público' : cvp.quien_gana === 'critica' ? 'Crítica' : 'Empate'}
-                sufijo="" sub="¿quién?" />
-            </div>
-            <button onClick={() => setMasAbierto(v => !v)} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: 'var(--font-ui)', fontSize: 11, color: GOLD,
-              letterSpacing: 1, padding: 0, display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <span style={{ fontSize: 9 }}>{masAbierto ? '▲' : '▼'}</span>
-              {masAbierto ? 'Menos datos' : 'Más datos'}
-            </button>
-            {masAbierto && cvp.comentario && (
-              <p style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${BORDER}`, fontSize: 13, color: TEXT2, fontStyle: 'italic', lineHeight: 1.7 }}>
-                {cvp.comentario}
-              </p>
-            )}
-          </Reveal>
-
-          <Reveal className="report-card">
+          <Reveal className="report-card" style={{ flex: 1 }}>
             <Label>Datos curiosos</Label>
             <Dato label="Giros de guión" value={<GirosDots n={giros} />} />
             <Dato label="Postcréditos"
               value={informe.post_creditos === 'sí' ? 'Quédate' : informe.post_creditos === 'no' ? 'No' : '—'} />
             {informe.indice_giros && <Dato label="Nivel drama" value={nivelDrama(informe.indice_giros, cvp)} />}
-            {informe.alerta_indy && <Dato label="El perro" value="Aparece 🐾" valueStyle={{ color: GOLD }} />}
+            {informe.alerta_indy && <Dato label="El perro" value="Aparece" valueStyle={{ color: GOLD }} />}
+            {tagsCuriosos.map((tag, i) => (
+              <Dato key={i} label={tag.pregunta} value={tag.respuesta === 'sí' ? 'Sí' : 'No'}
+                valueStyle={tag.respuesta === 'sí' ? { color: GOLD } : undefined} />
+            ))}
           </Reveal>
 
           <Reveal className="report-card">
@@ -492,7 +464,7 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
               <div style={{
                 aspectRatio: '16/9', background: 'rgba(255,255,255,0.04)', borderRadius: 8,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: TEXT2, fontFamily: 'var(--font-ui)', fontSize: 11, letterSpacing: 2,
+                color: TEXT2, fontFamily: 'var(--font-body)', fontSize: 11, letterSpacing: 2,
               }}>NO DISPONIBLE</div>
             )}
           </Reveal>
@@ -503,13 +475,9 @@ export default function Informe({ informe, videoId, esLofi, posterUrl, onVolver,
       {/* ── Acciones ── */}
       <div style={{
         display: 'flex', justifyContent: 'center', alignItems: 'center',
-        paddingTop: 32, marginTop: 32, borderTop: `1px solid ${BORDER}`,
+        paddingTop: 32, marginTop: 32,
       }}>
-        <button onClick={onVolver} style={{
-          background: 'transparent', border: `1.5px solid ${BORDER}`, color: TEXT2,
-          fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-          letterSpacing: 2, textTransform: 'uppercase', padding: '10px 20px', cursor: 'pointer', borderRadius: 6,
-        }}>← Nueva búsqueda</button>
+        <button onClick={onVolver} className="btn-secondary" style={{ fontSize: 11 }}>← Nueva búsqueda</button>
       </div>
 
     </div>

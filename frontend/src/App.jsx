@@ -5,6 +5,23 @@ import Cargando from './components/Cargando'
 
 const API = 'http://localhost:8000'
 
+const URLS_PLATAFORMA = {
+  'Netflix':     titulo => `https://www.netflix.com/search?q=${encodeURIComponent(titulo)}`,
+  'Prime Video': titulo => `https://www.amazon.com/s?k=${encodeURIComponent(titulo)}&i=instant-video`,
+  'Disney+':     titulo => `https://www.google.com/search?q=${encodeURIComponent(`${titulo} site:disneyplus.com`)}`,
+  'Max':         titulo => `https://play.max.com/search?q=${encodeURIComponent(titulo)}`,
+  'Movistar+':   titulo => `https://ver.movistarplus.es/buscador/${encodeURIComponent(titulo)}`,
+  'Apple TV+':   titulo => `https://tv.apple.com/search?term=${encodeURIComponent(titulo)}`,
+  'Filmin':      titulo => `https://www.filmin.es/buscar?q=${encodeURIComponent(titulo)}`,
+}
+
+const urlPlataforma = (plataforma, titulo) =>
+  (URLS_PLATAFORMA[plataforma] || (t => `https://www.google.com/search?q=${encodeURIComponent(`${t} ${plataforma}`)}`))(titulo)
+
+const urlImdb         = titulo => `https://www.imdb.com/find?q=${encodeURIComponent(titulo)}`
+const urlFilmaffinity = titulo => `https://www.filmaffinity.com/es/search.php?stext=${encodeURIComponent(titulo)}`
+const urlLetterboxd   = titulo => `https://letterboxd.com/search/${encodeURIComponent(titulo)}/`
+
 export default function App() {
   const [estado, setEstado]       = useState('intro')   // intro | form | cargando | cache | informe
   const [informe, setInforme]     = useState(null)
@@ -23,7 +40,10 @@ export default function App() {
   const [esSuerte, setEsSuerte] = useState(false)
   const [suerteResultado, setSuerteResultado] = useState(null)
   const [suerteError, setSuerteError] = useState(null)
- 
+  const [forzarNuevo, setForzarNuevo] = useState(false)
+  const [tituloAnioPendiente, setTituloAnioPendiente] = useState({ titulo: '', anio: null })
+  const [easterEggActivo, setEasterEggActivo] = useState(false)
+
   const handleSuerteRecomendar = async () => {
     setSuerteCargando(true)
     setSuerteResultado(null)
@@ -60,6 +80,12 @@ export default function App() {
 
   const handleBuscar = async (datos) => {
     setFormData(datos)
+    // si venimos de "analizar de nuevo" en la pantalla de caché, ya sabemos que hay que forzar
+    if (forzarNuevo) {
+      setForzarNuevo(false)
+      await ejecutarAgente(datos, true)
+      return
+    }
     setEstado('cargando')
     try {
       const res   = await fetch(`${API}/cache`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: datos.titulo }) })
@@ -67,6 +93,21 @@ export default function App() {
       if (cache.cache) { setCacheInfo(cache); setEstado('cache'); return }
     } catch (e) { console.error(e) }
     await ejecutarAgente(datos, false)
+  }
+
+  // compruebo si ya existe caché justo al confirmar el título, antes de preguntar el perfil
+  const comprobarTitulo = async (titulo, anio) => {
+    try {
+      const res   = await fetch(`${API}/cache`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo }) })
+      const cache = await res.json()
+      if (cache.cache) {
+        setCacheInfo(cache)
+        setTituloAnioPendiente({ titulo, anio })
+        setEstado('cache')
+        return true
+      }
+    } catch (e) { console.error(e) }
+    return false
   }
 
   const ejecutarAgente = async (datos, forzar_nuevo) => {
@@ -102,32 +143,31 @@ export default function App() {
           backgroundAttachment: 'fixed',
           overflow: 'hidden',
         }}>
-          {/* Logo de título */}
+          {/* Logo de título — easter egg: un clic activa la música oculta */}
           <img src="/indy-titulo.png" alt="INDY"
-            style={{ maxWidth: 440, width: '90%', marginBottom: 12 }}
+            style={{ maxWidth: 220, width: '55%', marginBottom: 12, cursor: 'pointer' }}
             onError={e => { e.target.style.display = 'none' }}
+            onClick={() => setEasterEggActivo(true)}
           />
-
-          {/* Subtítulo / Descripción arriba */}
-          <p style={{
-            marginBottom: 32, fontSize: 13, color: 'rgba(255,255,255,0.85)',
-            fontFamily: 'var(--font-body)', letterSpacing: 1,
-            textShadow: '0 1px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.8)',
-            textAlign: 'center', maxWidth: 380, lineHeight: 1.5
-          }}>
-            El agente de IA que te ayuda a elegir película antes de que se te enfríen las palomitas buscando.
-          </p>
+          {easterEggActivo && (
+            <iframe
+              title="easter-egg-audio"
+              src="https://www.youtube.com/embed/ojZ0k9ymdU0?autoplay=1"
+              allow="autoplay"
+              style={{ width: 0, height: 0, border: 'none', position: 'absolute' }}
+            />
+          )}
 
           {/* Pegatina interactiva de Indy para empezar la experiencia (Más grande!) */}
-          <button 
-            onClick={() => setEstado('form')} 
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              cursor: 'pointer', 
+          <button
+            onClick={() => setEstado('form')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
               outline: 'none',
               padding: 0,
-              marginBottom: 36,
+              marginBottom: 14,
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               width: '100%',
               display: 'flex',
@@ -151,10 +191,10 @@ export default function App() {
             <img 
               src="/indy_start.png" 
               alt="Comenzar Misión Indy"
-              style={{ 
-                maxWidth: 320,
-                width: '75%',
-                height: 'auto', 
+              style={{
+                maxWidth: 460,
+                width: '100%',
+                height: 'auto',
                 objectFit: 'contain',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 filter: 'grayscale(25%) sepia(15%) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6))'
@@ -163,33 +203,17 @@ export default function App() {
           </button>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', width: '90%', maxWidth: 320 }}>
-            <button onClick={() => setMostrarSuerteModal(true)} className="btn-main" style={{
-              width: '100%',
-              padding: '12px 24px',
-              fontSize: '18px',
-              background: 'linear-gradient(180deg, rgba(74, 222, 128, 0.16) 0%, rgba(74, 222, 128, 0.05) 100%)',
-              borderColor: 'rgba(74, 222, 128, 0.4)',
-              color: '#4ade80',
-              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 16px rgba(74, 222, 128, 0.1)',
-              letterSpacing: '2px',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'linear-gradient(180deg, rgba(74, 222, 128, 0.24) 0%, rgba(74, 222, 128, 0.10) 100%)';
-              e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.65)';
-              e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(255,255,255,0.35), 0 12px 40px rgba(74, 222, 128, 0.18)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'linear-gradient(180deg, rgba(74, 222, 128, 0.16) 0%, rgba(74, 222, 128, 0.05) 100%)';
-              e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.4)';
-              e.currentTarget.style.boxShadow = 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 16px rgba(74, 222, 128, 0.1)';
-              e.currentTarget.style.transform = 'none';
-            }}
+            <button onClick={() => setMostrarSuerteModal(true)} className="btn-secondary" style={{ width: '100%', padding: '14px 20px', fontSize: 14 }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.2), 0 0 24px rgba(240, 192, 64, 0.45)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = '' }}
             >
-              CHAT CON INDY 💬
+              CHAT CON INDY
             </button>
-            <button onClick={() => setMostrarModal(true)} className="btn-secondary" style={{ width: '100%', padding: '10px 20px', fontSize: 13 }}>
-              ¿Por qué me llamo Indy? 🐾
+            <button onClick={() => setMostrarModal(true)} className="btn-secondary" style={{ width: '100%', padding: '10px 20px', fontSize: 13 }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.2), 0 0 24px rgba(240, 192, 64, 0.45)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = '' }}
+            >
+              ¿Por qué me llamo Indy?
             </button>
           </div>
         </div>
@@ -197,7 +221,14 @@ export default function App() {
 
       {/* ── FORMULARIO ── */}
       {estado === 'form' && (
-        <Formulario onBuscar={(datos) => { setEsSuerte(false); handleBuscar(datos) }} onVolver={() => setEstado('intro')} />
+        <Formulario
+          onBuscar={(datos) => { setEsSuerte(false); handleBuscar(datos) }}
+          onVolver={() => setEstado('intro')}
+          onComprobarTitulo={comprobarTitulo}
+          startAtStep2={forzarNuevo}
+          tituloInicial={tituloAnioPendiente.titulo}
+          anioInicial={tituloAnioPendiente.anio}
+        />
       )}
 
       {/* ── CARGANDO ── */}
@@ -206,18 +237,24 @@ export default function App() {
       {/* ── CACHÉ ── */}
       {estado === 'cache' && cacheInfo && (
         <div style={{
-          minHeight: '100vh', background: 'var(--bg)',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', padding: 40,
+          minHeight: '100vh', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', padding: '40px 24px',
+          backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), url(/fondo.jpg)',
+          backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed',
         }}>
-          <div style={{ maxWidth: 520, width: '100%', textAlign: 'center' }}>
+          <div className="glass-panel" style={{ maxWidth: 520, width: '100%', padding: '40px 36px', textAlign: 'center' }}>
+            <h3 style={{
+              fontFamily: 'var(--font-title)', fontSize: 26,
+              color: 'var(--gold)', letterSpacing: 1.5, marginBottom: 20,
+            }}>
+              Ya analicé esta película
+            </h3>
             <p style={{
-              fontFamily: 'monospace', fontSize: 13, color: 'var(--text-2)',
-              marginBottom: 12, letterSpacing: 1,
+              fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-2)', marginBottom: 8,
             }}>
               Indy ya analizó esta película el <strong style={{ color: 'var(--gold)' }}>{cacheInfo.fecha_consulta}</strong>
             </p>
-            <p style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-3)', marginBottom: 36 }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-3)', marginBottom: 36 }}>
               ¿Usamos el análisis guardado o repetimos la misión?
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -226,7 +263,7 @@ export default function App() {
                 USAR GUARDADO
               </button>
               <button className="btn-secondary"
-                onClick={() => ejecutarAgente(formData, true)}>
+                onClick={() => { setForzarNuevo(true); setEstado('form') }}>
                 ANALIZAR DE NUEVO
               </button>
             </div>
@@ -238,14 +275,13 @@ export default function App() {
       {estado === 'informe' && informe && (
         <div style={{
           minHeight: '100vh',
-          background: 'rgba(13,11,10,0.92)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(/fondo.jpg)',
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
         }}>
 
-
           {/* Contenido */}
-          <Informe 
+          <Informe
             informe={informe} 
             videoId={videoId} 
             esLofi={esLofi} 
@@ -259,7 +295,7 @@ export default function App() {
       {/* ── MODAL HISTORIA DE INDY ── */}
       {mostrarModal && (
         <div className="modal-overlay" onClick={() => setMostrarModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 880, padding: '40px 44px' }}>
             <button onClick={() => setMostrarModal(false)} style={{
               position: 'absolute', top: 20, right: 20,
               background: 'none', border: 'none', color: 'var(--text-2)',
@@ -268,41 +304,61 @@ export default function App() {
             }}>
               ✕
             </button>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-              <img src="/indy_real.jpg" alt="Indy el Schnauzer Real" style={{
-                width: 160, height: 160, borderRadius: '50%',
-                objectFit: 'cover', border: '3px solid var(--gold)',
-                boxShadow: '0 8px 24px rgba(240, 192, 64, 0.25)',
-                marginBottom: 24
-              }} />
-              
-              <h3 style={{
-                fontFamily: 'var(--font-title)', fontSize: 30,
-                color: 'var(--gold)', letterSpacing: 2, marginBottom: 16
-              }}>
-                Déjame que te cuente su historia...
-              </h3>
-              
-              <p style={{
-                fontFamily: 'var(--font-body)', fontSize: 14,
-                color: 'var(--text)', lineHeight: 1.7, marginBottom: 20,
-                textAlign: 'justify'
-              }}>
-                Este agente de IA se llama Indy en honor a un entrañable perro de raza <strong>Schnauzer miniatura</strong> que tenía un fuerte carácter y, sin duda, un criterio muy propio. Indy no se conformaba con cualquier cosa: si algo no le gustaba, te lo hacía saber de inmediato.
-              </p>
-              
-              <p style={{
-                fontFamily: 'var(--font-body)', fontSize: 14,
-                color: 'var(--text-2)', lineHeight: 1.7, marginBottom: 28,
-                textAlign: 'justify'
-              }}>
-                Nuestra IA hereda su exigencia, honestidad brutal y amor por el buen cine (o al menos por lo que a él le convencía) para decirte si una película realmente merece tu tiempo. Su veredicto no se anda con rodeos.
-              </p>
-              
-              <button className="btn-secondary" onClick={() => setMostrarModal(false)} style={{ padding: '10px 24px' }}>
-                Cerrar
-              </button>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'stretch' }}>
+
+              {/* Columna izquierda: foto grande */}
+              <div style={{ flex: '1 1 220px', maxWidth: 280 }}>
+                <img src="/indy_real.jpg" alt="Indy el Schnauzer Real" style={{
+                  width: '100%', height: '100%', minHeight: 260,
+                  borderRadius: 18, objectFit: 'cover',
+                  border: '2px solid var(--gold)',
+                  boxShadow: '0 8px 24px rgba(240, 192, 64, 0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
+                  display: 'block',
+                }} />
+              </div>
+
+              {/* Columna derecha: historia, dos tercios del módulo */}
+              <div style={{ flex: '2 1 360px', textAlign: 'left' }}>
+                <h3 style={{
+                  fontFamily: 'var(--font-title)', fontSize: 28,
+                  color: 'var(--gold)', letterSpacing: 2, marginBottom: 18
+                }}>
+                  Déjame que te cuente su historia...
+                </h3>
+
+                <p style={{
+                  fontFamily: 'var(--font-body)', fontSize: 14,
+                  color: 'var(--text)', lineHeight: 1.75, marginBottom: 16,
+                }}>
+                  Indy era mi perro, adoptado en 2012 y procedente de Badajoz. Un schnauzer de carácter, con esas cejas pobladas que le daban siempre cara de estar juzgándote en silencio. Su nombre procede, evidentemente, de Indiana Jones. Pero, ¿por qué Indiana Jones?
+                </p>
+
+                <p style={{
+                  fontFamily: 'var(--font-body)', fontSize: 14,
+                  color: 'var(--text-2)', lineHeight: 1.75, marginBottom: 16,
+                }}>
+                  Resulta que, como se explica en <em>"Indiana Jones y la última cruzada"</em>, Indy en realidad se llama Henry Jones Jr. Entonces, ¿por qué ese famoso nombre? Curiosamente, poca gente recuerda que su nombre procede de un perro de su infancia, llamado Indiana.
+                </p>
+
+                <p style={{
+                  fontFamily: 'var(--font-body)', fontSize: 14,
+                  color: 'var(--text-2)', lineHeight: 1.75, marginBottom: 16,
+                }}>
+                  Así que este agente, Indy, debe su nombre a mi perro de toda la vida, quien a su vez recibió su nombre por el famoso arqueólogo encarnado por Harrison Ford.
+                </p>
+
+                <p style={{
+                  fontFamily: 'var(--font-body)', fontSize: 14,
+                  color: 'var(--text-2)', lineHeight: 1.75, marginBottom: 28,
+                }}>
+                  Y si el agente tiene tanto carácter al opinar sobre cine, es por algo: los schnauzer son así, tercos, curiosos y con un olfato infalible para detectar cuándo algo no merece la pena. Indy nunca se conformaba con cualquier paseo, y este Indy tampoco se conforma con cualquier película.
+                </p>
+
+                <button className="btn-secondary" onClick={() => setMostrarModal(false)} style={{ padding: '10px 24px' }}>
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -323,8 +379,7 @@ export default function App() {
 
             {suerteCargando ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '40px 0' }}>
-                <span style={{ fontSize: 48, animation: 'pulse 1.5s infinite' }}>🐾</span>
-                <p style={{ fontFamily: 'var(--font-title)', fontSize: 24, color: '#4ade80', marginTop: 16 }}>
+                <p style={{ fontFamily: 'var(--font-title)', fontSize: 26, letterSpacing: 1.5, color: 'var(--gold)', marginTop: 16 }}>
                   Indy está escribiendo...
                 </p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-2)', marginTop: 8, fontStyle: 'italic' }}>
@@ -340,16 +395,15 @@ export default function App() {
               </div>
             ) : suerteError ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '20px 0' }}>
-                <span style={{ fontSize: 44, marginBottom: 12 }}>⚠️</span>
-                <p style={{ fontFamily: 'var(--font-title)', fontSize: 22, color: '#ef5350', marginBottom: 12 }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 20, color: '#ef5350', marginBottom: 12 }}>
                   Error de conexión
                 </p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-2)', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
                   {suerteError}
                 </p>
                 <div style={{ display: 'flex', gap: 12, width: '100%', justifyContent: 'center' }}>
-                  <button className="btn-main" onClick={handleSuerteRecomendar} style={{ width: '55%', padding: '10px 20px', fontSize: 14 }}>
-                    Reintentar 🐾
+                  <button className="btn-secondary" onClick={handleSuerteRecomendar} style={{ width: '55%', padding: '10px 20px', fontSize: 14 }}>
+                    Reintentar
                   </button>
                   <button className="btn-secondary" onClick={() => setSuerteError(null)} style={{ width: '40%', padding: '10px 20px', fontSize: 14 }}>
                     Escribir otro plan
@@ -362,8 +416,8 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 16, marginBottom: 20 }}>
                   <img src="/indy_real.jpg" alt="Indy" style={{ width: 44, height: 44, borderRadius: '50%', border: '2px solid var(--gold)', objectFit: 'cover' }} onError={e => { e.target.src = "/icono_indy.png" }} />
                   <div style={{ textAlign: 'left' }}>
-                    <h4 style={{ fontFamily: 'var(--font-title)', fontSize: 18, color: 'var(--gold)', margin: 0, letterSpacing: 1 }}>Indy el Crítico</h4>
-                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: '#4ade80', textTransform: 'uppercase', letterSpacing: 1, display: 'block' }}>En Línea 🐾</span>
+                    <h4 style={{ fontFamily: 'var(--font-title)', fontSize: 22, color: 'var(--gold)', margin: 0, letterSpacing: 1 }}>Indy</h4>
+                    <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 10, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: 1, display: 'block' }}>En línea</span>
                   </div>
                 </div>
 
@@ -386,37 +440,43 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 24 }}>
                   <div style={{
                     maxWidth: '85%',
-                    background: 'linear-gradient(135deg, rgba(74, 222, 128, 0.15) 0%, rgba(74, 222, 128, 0.05) 100%)',
-                    border: '1px solid rgba(74, 222, 128, 0.35)',
+                    background: 'linear-gradient(135deg, rgba(240, 192, 64, 0.12) 0%, rgba(240, 192, 64, 0.03) 100%)',
+                    border: '1px solid rgba(240, 192, 64, 0.3)',
                     borderRadius: '16px 16px 16px 2px',
                     padding: '16px',
-                    boxShadow: '0 4px 16px rgba(74, 222, 128, 0.08)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
                     textAlign: 'left'
                   }}>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-                      Te recomiendo ver: <strong style={{ color: '#4ade80', fontSize: 16 }}>{suerteResultado.titulo}</strong> {suerteResultado.anio ? `(${suerteResultado.anio})` : ''}
+                      Te recomiendo ver:{' '}
+                      <a
+                        href={urlPlataforma(suertePlataforma, suerteResultado.titulo)}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ color: 'var(--gold)', fontSize: 16, fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                      >
+                        {suerteResultado.titulo}
+                      </a>{' '}
+                      {suerteResultado.anio ? `(${suerteResultado.anio})` : ''}
                     </p>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-2)', margin: '12px 0 0 0', lineHeight: 1.5, fontStyle: 'italic', borderTop: '1px solid rgba(74,222,128,0.2)', paddingTop: 10 }}>
-                      🐾 "{suerteResultado.justificacion_eleccion}"
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-2)', margin: '12px 0 0 0', lineHeight: 1.5, fontStyle: 'italic', borderTop: '1px solid rgba(240,192,64,0.18)', paddingTop: 10 }}>
+                      "{suerteResultado.justificacion_eleccion}"
                     </p>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(240,192,64,0.18)' }}>
+                      <a href={urlImdb(suerteResultado.titulo)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-3)', letterSpacing: 0.5 }}>IMDb ↗</a>
+                      <a href={urlFilmaffinity(suerteResultado.titulo)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-3)', letterSpacing: 0.5 }}>FilmAffinity ↗</a>
+                      <a href={urlLetterboxd(suerteResultado.titulo)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-3)', letterSpacing: 0.5 }}>Letterboxd ↗</a>
+                    </div>
                   </div>
                 </div>
 
                 {/* Botones de acción */}
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                  <button 
-                    className="btn-main" 
+                  <button
+                    className="btn-secondary"
                     onClick={() => { setSuerteResultado(null); setSuertePrompt('') }}
-                    style={{
-                      width: '60%', padding: '10px 20px', fontSize: 14,
-                      background: 'linear-gradient(180deg, rgba(240, 192, 64, 0.16) 0%, rgba(240, 192, 64, 0.05) 100%)',
-                      borderColor: 'rgba(240, 192, 64, 0.45)',
-                      color: 'var(--gold)',
-                      boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 16px rgba(0,0,0,0.3)',
-                      textShadow: 'none'
-                    }}
+                    style={{ width: '60%', padding: '10px 20px', fontSize: 14 }}
                   >
-                    Preguntar otra cosa 🐾
+                    Preguntar otra cosa
                   </button>
                   <button className="btn-secondary" onClick={closeSuerteModal} style={{ width: '35%', padding: '10px 16px', fontSize: 14 }}>
                     Cerrar chat
@@ -425,10 +485,9 @@ export default function App() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-                <span style={{ fontSize: 44, marginBottom: 12 }}>💬</span>
                 <h3 style={{
                   fontFamily: 'var(--font-title)', fontSize: 28,
-                  color: '#4ade80', letterSpacing: 2, marginBottom: 8
+                  color: 'var(--gold)', letterSpacing: 2, marginBottom: 8
                 }}>
                   Habla con Indy
                 </h3>
@@ -441,12 +500,11 @@ export default function App() {
 
                 {/* Selector de Plataforma (Compacto) */}
                 <div style={{ width: '100%', textAlign: 'left', marginBottom: 18 }}>
-                  <label style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>
-                    Plataforma de streaming:
-                  </label>
-                  <select value={suertePlataforma} onChange={e => setSuertePlataforma(e.target.value)} disabled={suerteCargando} style={{
-                    width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 12, padding: '10px 14px', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none'
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 8 }}>
+                    ✦ Plataforma de streaming
+                  </p>
+                  <select className="inp" value={suertePlataforma} onChange={e => setSuertePlataforma(e.target.value)} disabled={suerteCargando} style={{
+                    fontSize: 14, padding: '10px 14px'
                   }}>
                     <option value="Netflix" style={{ background: '#111' }}>Netflix</option>
                     <option value="Prime Video" style={{ background: '#111' }}>Prime Video</option>
@@ -460,10 +518,11 @@ export default function App() {
 
                 {/* Caja de chat (Textarea) */}
                 <div style={{ width: '100%', textAlign: 'left', marginBottom: 24 }}>
-                  <label style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>
-                    Tu mensaje para Indy:
-                  </label>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 8 }}>
+                    ✦ Tu mensaje para Indy
+                  </p>
                   <textarea
+                    className="inp"
                     value={suertePrompt}
                     onChange={e => setSuertePrompt(e.target.value)}
                     onKeyDown={e => {
@@ -476,33 +535,23 @@ export default function App() {
                     }}
                     placeholder="Ej: Recomiéndame una peli para ver un domingo a la tarde de lluvia con la familia si hay 40º en la calle..."
                     disabled={suerteCargando}
-                    style={{
-                      width: '100%', height: 110, background: 'rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.12)',
-                      borderRadius: 12, padding: '12px 16px', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14,
-                      outline: 'none', resize: 'none', transition: 'all 0.2s', lineHeight: 1.5
-                    }}
-                    onFocus={e => e.currentTarget.style.borderColor = '#4ade80'}
-                    onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'}
+                    style={{ height: 110, fontSize: 14, resize: 'none', lineHeight: 1.5 }}
                     autoFocus
                   />
                 </div>
 
                 <div style={{ display: 'flex', gap: 12, width: '100%', justifyContent: 'center' }}>
-                  <button 
-                    className="btn-main" 
-                    onClick={handleSuerteRecomendar} 
-                    disabled={suerteCargando || !suertePrompt.trim()} 
+                  <button
+                    className="btn-secondary"
+                    onClick={handleSuerteRecomendar}
+                    disabled={suerteCargando || !suertePrompt.trim()}
                     style={{
                       width: '65%', padding: '12px 24px', fontSize: 15,
-                      background: 'linear-gradient(180deg, rgba(74, 222, 128, 0.16) 0%, rgba(74, 222, 128, 0.05) 100%)',
-                      borderColor: suertePrompt.trim() ? 'rgba(74, 222, 128, 0.4)' : 'rgba(255,255,255,0.08)',
-                      color: suertePrompt.trim() ? '#4ade80' : 'var(--text-3)',
-                      boxShadow: suertePrompt.trim() ? 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 16px rgba(74, 222, 128, 0.1)' : 'none',
                       opacity: suertePrompt.trim() ? 1 : 0.5,
                       cursor: suertePrompt.trim() ? 'pointer' : 'not-allowed'
                     }}
                   >
-                    {suerteCargando ? 'Indy pensando...' : 'Enviar a Indy 🐾'}
+                    {suerteCargando ? 'Indy pensando...' : 'Enviar a Indy'}
                   </button>
                   <button className="btn-secondary" onClick={closeSuerteModal} disabled={suerteCargando} style={{ width: '30%', padding: '12px 16px', fontSize: 15 }}>
                     Cerrar

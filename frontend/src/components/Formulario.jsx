@@ -8,11 +8,12 @@ const PERFILES = [
   { key: 'curioso',       label: 'El Curioso',        img: '/curioso.png' },
 ]
 
-export default function Formulario({ onBuscar, onVolver }) {
-  const [step, setStep]     = useState(1)
-  const [titulo, setTitulo] = useState('')
-  const [anio, setAnio]     = useState('')
+export default function Formulario({ onBuscar, onVolver, onComprobarTitulo, startAtStep2, tituloInicial, anioInicial }) {
+  const [step, setStep]     = useState(startAtStep2 ? 2 : 1)
+  const [titulo, setTitulo] = useState(tituloInicial || '')
+  const [anio, setAnio]     = useState(anioInicial ? String(anioInicial) : '')
   const [perfil, setPerfil] = useState(null)
+  const [comprobandoCache, setComprobandoCache] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100) }, [step])
@@ -25,6 +26,15 @@ export default function Formulario({ onBuscar, onVolver }) {
       anio: anio ? parseInt(anio) : null,
       nombre_usuario: null,
     })
+  }
+
+  // antes de pasar al paso del perfil compruebo si la película ya tiene caché
+  const irAlPaso2 = async () => {
+    if (!titulo.trim() || comprobandoCache) return
+    setComprobandoCache(true)
+    const tieneCache = await onComprobarTitulo(titulo.trim(), anio ? parseInt(anio) : null)
+    setComprobandoCache(false)
+    if (!tieneCache) setStep(2)
   }
 
   return (
@@ -46,52 +56,53 @@ export default function Formulario({ onBuscar, onVolver }) {
         ))}
       </div>
 
-      <div className="up" key={step} style={{
+      <div className="up glass-panel" key={step} style={{
         width: '100%',
         maxWidth: step === 2 ? 1200 : 520,
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: 'none',
-        borderRadius: 32,
         padding: step === 2 ? '40px 48px' : '40px 36px',
-        boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 25px 60px rgba(0, 0, 0, 0.85)',
         transition: 'max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
       }}>
 
         {/* ── PASO 1: Película ── */}
         {step === 1 && (
-          <div>
+          <div style={{ textAlign: 'center' }}>
             <p className="label" style={{ marginBottom: 12 }}>Paso 1 de 2</p>
             <h2 style={{
-              fontFamily: 'var(--font-title)', fontSize: 'clamp(36px,6vw,56px)',
-              color: 'var(--text)', letterSpacing: 4, marginBottom: 36,
+              fontFamily: 'var(--font-ui)', fontWeight: 800, fontSize: 'clamp(28px,4.5vw,42px)',
+              color: 'var(--text)', letterSpacing: 0.5, marginBottom: 36, lineHeight: 1.15,
             }}>
-              ¿Qué película?
+              ¿Qué peli quieres que analice?
             </h2>
 
             <input ref={inputRef} className="inp" value={titulo}
               onChange={e => setTitulo(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && titulo.trim() && setStep(2)}
+              onKeyDown={e => e.key === 'Enter' && irAlPaso2()}
               placeholder="El Padrino, Dune, Barbie…"
               style={{ marginBottom: 12, borderRadius: 12 }}
             />
-            <input className="inp" type="number" value={anio}
+            <input className="inp no-spinner" type="number" value={anio}
               onChange={e => setAnio(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && titulo.trim() && setStep(2)}
+              onKeyDown={e => e.key === 'Enter' && irAlPaso2()}
               placeholder="Año (opcional)"
               min="1900" max="2030"
               style={{ marginBottom: 36, fontSize: 16, padding: '10px 18px', borderRadius: 12 }}
             />
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <button className="btn-main"
-                disabled={!titulo.trim()}
-                onClick={() => setStep(2)}
-                style={{ opacity: titulo.trim() ? 1 : 0.4 }}>
-                Siguiente →
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, width: '100%' }}>
+              <button className="btn-secondary" onClick={onVolver}
+                style={{ width: 160, padding: '16px 0', fontSize: 14, fontFamily: 'var(--font-ui)', fontWeight: 700, textAlign: 'center' }}>
+                ← Atrás
               </button>
-              <button className="btn-secondary" onClick={onVolver}>← Atrás</button>
+              <button className="btn-secondary"
+                disabled={!titulo.trim() || comprobandoCache}
+                onClick={irAlPaso2}
+                style={{
+                  width: 160, padding: '16px 0', fontSize: 14, fontFamily: 'var(--font-ui)', fontWeight: 700,
+                  textAlign: 'center', opacity: titulo.trim() && !comprobandoCache ? 1 : 0.4,
+                  cursor: titulo.trim() && !comprobandoCache ? 'pointer' : 'not-allowed',
+                }}>
+                {comprobandoCache ? 'Comprobando…' : 'Siguiente →'}
+              </button>
             </div>
           </div>
         )}
@@ -108,7 +119,7 @@ export default function Formulario({ onBuscar, onVolver }) {
               ¿Qué tipo de espectador eres?
             </h2>
 
-            <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 12, justifyContent: 'center', marginBottom: 36, width: '100%', overflowX: 'auto', paddingBottom: 12 }}>
+            <div className="no-scrollbar" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 12, justifyContent: 'center', marginBottom: 36, width: '100%', overflowX: 'auto' }}>
               {PERFILES.map(p => (
                 <button key={p.key} type="button"
                   onClick={() => { setPerfil(p.key); setTimeout(() => submit(p.key), 220) }}
@@ -119,8 +130,8 @@ export default function Formulario({ onBuscar, onVolver }) {
                     cursor: 'pointer',
                     outline: 'none',
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    flex: '1 1 180px',
-                    maxWidth: 200,
+                    flex: '1 1 200px',
+                    maxWidth: 230,
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',

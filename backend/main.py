@@ -1,4 +1,4 @@
-# main.py — api fastapi del agente indy
+# FASTAPI DEL AGENTE INDY
 
 # importo fastapi y la excepción http para crear la api y devolver errores
 from fastapi import FastAPI, HTTPException
@@ -37,7 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# instancio el agente indy una sola vez para reutilizarlo en toda la api
+# defino el agente indy una sola vez para reutilizarlo en toda la api
 agente = IndyAgent()
 
 

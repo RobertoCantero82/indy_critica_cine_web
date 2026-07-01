@@ -41,11 +41,27 @@ El proyecto nació como agente de terminal y ha evolucionado a una aplicación w
 
 Indy implementa un bucle **ReAct** con tres herramientas independientes:
 
-```
-percibir  → comprueba si la película ya está en caché
-razonar   → decide qué herramienta ejecutar a continuación
-actuar    → Buscador → Veredicto → Informe
-observar  → evalúa el resultado y reintenta si algo falla
+```mermaid
+flowchart TD
+    U["Usuario<br/>título · perfil · tmdb_id"] --> P["Percibir"]
+    P --> CACHE{"¿Hay caché<br/>guardada?"}
+    CACHE -- sí --> FIN["Devuelve el<br/>informe guardado"]
+    CACHE -- no --> R
+
+    subgraph LOOP["Bucle ReAct — IndyAgent"]
+        direction TB
+        R["Razonar<br/>¿qué falta?"] --> ACT{"Actuar"}
+        ACT -- sin datos --> BUS["Buscador<br/>TMDB · OMDb · streaming"]
+        ACT -- sin informe --> VER["Veredicto<br/>Groq · Llama 3.1"]
+        ACT -- sin guardar --> INF["Informe<br/>SQLite"]
+        BUS --> OBS["Observar"]
+        VER --> OBS
+        INF --> OBS
+        OBS -- reintentar --> R
+        OBS -- continuar --> R
+    end
+
+    R -- todo listo --> RES["Informe completo<br/>+ póster + streaming"]
 ```
 
 | Herramienta | Función |

@@ -1,4 +1,4 @@
-# informe.py — herramienta 3: guarda el informe completo en sqlite
+# GUARDA EL INFORME COMPLETO EN SQLITE
 
 # importo os para construir rutas de archivos
 import os
@@ -28,7 +28,7 @@ class Informe:
         # inicializo la base de datos creando la tabla si hace falta
         self._inicializar_db()
 
-    # — inicialización —
+    # INICIALIZACIÓN
 
     # defino el método que crea la tabla de informes si no existe
     def _inicializar_db(self):
@@ -61,7 +61,7 @@ class Informe:
         # cierro la conexión a la base de datos
         conexion.close()
 
-    # — caché —
+    # CACHÉ
 
     # defino el método que busca si ya existe un informe guardado para un título
     def buscar_en_cache(self, titulo: str) -> dict | None:
@@ -107,7 +107,7 @@ class Informe:
             # devuelvo none si ocurrió algún error al consultar la caché
             return None
 
-    # — guardado —
+    # GUARDADO
 
     # defino el método que guarda un nuevo informe en la base de datos
     def ejecutar(

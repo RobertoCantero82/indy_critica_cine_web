@@ -6,8 +6,6 @@ from agente.herramientas.buscador import Buscador
 from agente.herramientas.veredicto import Veredicto
 # importo la herramienta que guarda y consulta el informe
 from agente.herramientas.informe import Informe
-# importo los mensajes de carga que se muestran durante el proceso
-from agente.sistema import MENSAJES_CARGA
 
 
 # defino la clase principal que orquesta todo el agente
@@ -49,9 +47,8 @@ class IndyAgent:
         self.iteraciones = 0
         # guardo la lista de errores ocurridos durante la ejecución
         self.errores = []
-        self.log = []  # registro de pasos del loop para la ui
 
-    # — gestión del estado —
+    # GESTIÓN DEL ESTADO
 
     # defino el método que reinicia el estado antes de cada consulta
     def _resetear_sesion(self):
@@ -74,16 +71,6 @@ class IndyAgent:
         self.iteraciones = 0
         # vacío la lista de errores
         self.errores = []
-        # vacío el registro de pasos
-        self.log = []
-
-    # defino el método que añade un paso al registro de la sesión
-    def _registrar_paso(self, mensaje: str):
-        """añade un mensaje al log y lo devuelve para la ui."""
-        # añado el mensaje a la lista de pasos
-        self.log.append(mensaje)
-        # devuelvo el mensaje añadido
-        return mensaje
 
     # defino el método que controla el límite de iteraciones del loop
     def _incrementar_iteracion(self) -> bool:
@@ -100,7 +87,7 @@ class IndyAgent:
         # devuelvo verdadero si todavía no se ha superado el límite
         return True
 
-    # — fase 1: percibir —
+    # FASE 1: PERCIBIR
 
     # defino el método que comprueba si la película ya tiene informe guardado
     def comprobar_cache(self, titulo: str) -> dict | None:
@@ -139,9 +126,6 @@ class IndyAgent:
         # guardo el nombre del usuario recibido
         self.nombre_usuario = nombre_usuario
 
-        # registro el mensaje de inicio en el log
-        self._registrar_paso(MENSAJES_CARGA["inicio"])
-
         # compruebo si la película ya está en caché
         # busco si ya existe un informe guardado para este título
         cache = self.informe.buscar_en_cache(self.titulo)
@@ -157,14 +141,12 @@ class IndyAgent:
                 "informe": cache["informe"],
                 # incluyo la fecha en la que se guardó el informe
                 "fecha_consulta": cache["fecha_consulta"],
-                # incluyo el log acumulado hasta el momento
-                "log": self.log,
             }
 
         # si no hay caché devuelvo que se debe continuar con el loop
-        return {"ok": True, "cache": False, "log": self.log}
+        return {"ok": True, "cache": False}
 
-    # — fase 2: razonar —
+    # FASE 2: RAZONAR
 
     # defino el método que decide la siguiente acción del loop
     def razonar(self) -> dict:
@@ -200,7 +182,7 @@ class IndyAgent:
         # devuelvo la acción de fin cuando ya todo está completado
         return {"accion": "fin"}
 
-    # — fase 3: actuar —
+    # FASE 3: ACTUAR
 
     # defino el método que ejecuta la búsqueda de datos de la película
     def _actuar_buscar(self) -> bool:
@@ -208,9 +190,6 @@ class IndyAgent:
         invoca el buscador y guarda los datos en el estado.
         devuelve true si hay datos suficientes para continuar.
         """
-        # registro el mensaje de que se está buscando
-        self._registrar_paso(MENSAJES_CARGA["buscando"])
-
         # ejecuto el buscador con el título el año y el id de tmdb guardados
         datos = self.buscador.ejecutar(self.titulo, self.anio, self.tmdb_id)
 
@@ -225,8 +204,6 @@ class IndyAgent:
         if not datos.get("titulo"):
             # determino el motivo del fallo a partir de los errores o uso uno genérico
             motivo = datos["errores"][0] if datos.get("errores") else "película no encontrada"
-            # registro el mensaje de que no se encontraron datos
-            self._registrar_paso(MENSAJES_CARGA["sin_datos"])
             # añado un error explicativo a la lista de errores
             self.errores.append(f"Indy no encontró '{self.titulo}' — prueba con el título en inglés si es una película extranjera. ({motivo})")
             # devuelvo falso indicando que la búsqueda falló
@@ -243,9 +220,6 @@ class IndyAgent:
         invoca el generador de veredicto y guarda el informe en el estado.
         devuelve true si el informe se ha generado correctamente.
         """
-        # registro el mensaje de que se está generando el informe
-        self._registrar_paso(MENSAJES_CARGA["generando"])
-
         # ejecuto la herramienta de veredicto con los datos disponibles
         resultado = self.veredicto.ejecutar(
             # paso los datos de la película encontrados
@@ -262,9 +236,6 @@ class IndyAgent:
             self.errores.append(resultado["error"])
             # devuelvo falso indicando que la generación falló
             return False
-
-        # registro el mensaje de que se está verificando el informe
-        self._registrar_paso(MENSAJES_CARGA["verificando"])
 
         # verifico que el informe tiene todas las secciones obligatorias
         # defino la lista de secciones que el informe debe contener sí o sí
@@ -303,9 +274,6 @@ class IndyAgent:
         invoca la herramienta informe y persiste el resultado en sqlite.
         devuelve true si el guardado ha sido exitoso.
         """
-        # registro el mensaje de que se está guardando el informe
-        self._registrar_paso(MENSAJES_CARGA["guardando"])
-
         # extraigo la sección de crítica versus público del informe
         critica_vs_publico = self.informe_completo.get("critica_vs_publico", {})
 
@@ -343,7 +311,7 @@ class IndyAgent:
         # devuelvo verdadero indicando que el guardado tuvo éxito
         return True
 
-    # — fase 4: observar y loop principal —
+    # FASE 4: OBSERVAR Y LOOP PRINCIPAL
 
     # defino el método que evalúa el resultado de la última acción ejecutada
     def observar(self, exito: bool, accion: str) -> dict:
@@ -351,9 +319,6 @@ class IndyAgent:
         evalúa el resultado de la acción ejecutada.
         decide si continuar el loop, reintentar o parar.
         """
-        # registro el mensaje de que se está observando el resultado
-        self._registrar_paso(MENSAJES_CARGA["observando"])
-
         # compruebo si la acción anterior tuvo éxito
         if exito:
             # devuelvo que se debe continuar el loop
@@ -384,20 +349,18 @@ class IndyAgent:
         si forzar_nuevo=True ignora la caché y repite el análisis completo.
         """
 
-        # — percibir —
+        # PERCIBIR
         # ejecuto la fase de percepción con los datos recibidos
         percepcion = self.percibir(titulo, perfil_usuario, anio, nombre_usuario, tmdb_id)
 
         # compruebo si la percepción inicial falló
         if not percepcion["ok"]:
             # devuelvo un error indicando que la percepción falló
-            return {"ok": False, "error": "error en la percepción inicial", "log": self.log}
+            return {"ok": False, "error": "error en la percepción inicial"}
 
         # si hay caché y el usuario no ha pedido repetir, devuelvo el informe guardado
         # compruebo si hay caché disponible y no se pidió forzar un nuevo análisis
         if percepcion.get("cache") and not forzar_nuevo:
-            # registro el mensaje de fin del proceso
-            self._registrar_paso(MENSAJES_CARGA["fin"])
             # devuelvo el informe obtenido de la caché
             return {
                 # indico que la ejecución terminó correctamente
@@ -408,19 +371,15 @@ class IndyAgent:
                 "informe": percepcion["informe"],
                 # incluyo la fecha de la consulta guardada
                 "fecha_consulta": percepcion["fecha_consulta"],
-                # incluyo el log acumulado
-                "log": self.log,
             }
 
-        # — loop react —
+        # LOOP REACT
         # inicio el bucle principal del agente que se repite hasta terminar
         while True:
 
             # control de iteraciones
             # compruebo si se ha superado el número máximo de iteraciones
             if not self._incrementar_iteracion():
-                # registro el mensaje de que no se obtuvieron datos suficientes
-                self._registrar_paso(MENSAJES_CARGA["sin_datos"])
                 # devuelvo un error indicando que se alcanzó el límite de iteraciones
                 return {
                     # indico que la ejecución no terminó correctamente
@@ -429,17 +388,15 @@ class IndyAgent:
                     "error": "límite de iteraciones alcanzado",
                     # incluyo los errores parciales acumulados
                     "errores_parciales": self.errores,
-                    # incluyo el log acumulado
-                    "log": self.log,
                 }
 
-            # — razonar: qué hago ahora —
+            # RAZONAR
             # pido al método razonar que decida la siguiente acción
             decision = self.razonar()
             # extraigo el nombre de la acción decidida
             accion = decision["accion"]
 
-            # — actuar: ejecuto la acción decidida —
+            # ACTUAR
             # compruebo si la acción decidida es buscar datos
             if accion == "buscar":
                 # ejecuto la búsqueda y guardo si tuvo éxito
@@ -458,8 +415,6 @@ class IndyAgent:
             # compruebo si la acción decidida es finalizar
             elif accion == "fin":
                 # condición de salida: todo completado
-                # registro el mensaje de fin del proceso
-                self._registrar_paso(MENSAJES_CARGA["fin"])
                 # devuelvo el resultado final completo del agente
                 return {
                     # indico que la ejecución terminó correctamente
@@ -476,14 +431,10 @@ class IndyAgent:
                     "poster_url": self.datos_pelicula.get("poster_url") if self.datos_pelicula else None,
                     # incluyo los errores parciales acumulados durante el proceso
                     "errores_parciales": self.errores,
-                    # incluyo el log acumulado de todo el proceso
-                    "log": self.log,
                 }
 
             # compruebo si la acción decidida es un error irrecuperable
             elif accion == "error":
-                # registro el mensaje de error en el log
-                self._registrar_paso(MENSAJES_CARGA["error"])
                 # devuelvo el error con el motivo indicado por razonar
                 return {
                     # indico que la ejecución no terminó correctamente
@@ -492,18 +443,14 @@ class IndyAgent:
                     "error": decision.get("motivo", "error desconocido"),
                     # incluyo los errores parciales acumulados
                     "errores_parciales": self.errores,
-                    # incluyo el log acumulado
-                    "log": self.log,
                 }
 
-            # — observar: evalúo el resultado y decido si continuar —
+            # OBSERVAR
             # ejecuto la fase de observación con el resultado de la acción
             observacion = self.observar(exito, accion)
 
             # compruebo si la observación indica que no se debe continuar
             if not observacion["continuar"]:
-                # registro el mensaje de error en el log
-                self._registrar_paso(MENSAJES_CARGA["error"])
                 # devuelvo un error indicando que la acción no se pudo completar
                 return {
                     # indico que la ejecución no terminó correctamente
@@ -512,6 +459,4 @@ class IndyAgent:
                     "error": f"no se ha podido completar la acción: {accion}",
                     # incluyo los errores parciales acumulados
                     "errores_parciales": self.errores,
-                    # incluyo el log acumulado
-                    "log": self.log,
                 }

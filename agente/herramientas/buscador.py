@@ -1,4 +1,4 @@
-# buscador.py — herramienta 1: obtiene datos de la película desde apis externas
+# OBTIENE DATOS DE LA PELÍCULA DESDE APIS
 
 # importo os para leer variables de entorno
 import os
@@ -91,12 +91,12 @@ class Buscador(Herramienta):
             # devuelvo none si la llamada al modelo falló
             return None
 
-    # defino el método que hace una búsqueda fuzzy en omdb
+    # defino el método que hace una búsqueda aproximada en omdb
     def _buscar_omdb(self, titulo: str) -> dict:
         """búsqueda fuzzy en omdb con ?s= — útil cuando ?t= no encuentra exacto."""
         # intento realizar la búsqueda y manejar posibles errores
         try:
-            # hago la petición de búsqueda fuzzy a omdb
+            # hago la petición de búsqueda aproximada a omdb
             resp = requests.get(
                 # uso el endpoint principal de omdb
                 "http://www.omdbapi.com/",

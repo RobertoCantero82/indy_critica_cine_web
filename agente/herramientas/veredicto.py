@@ -1,4 +1,4 @@
-# veredicto.py — herramienta 2: el llm genera cada sección del informe por separado
+# EL LLM GENERA CADA SECCIÓN DEL INFORME POR SEPARADO
 
 # importo os para leer variables de entorno
 import os

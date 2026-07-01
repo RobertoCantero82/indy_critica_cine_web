@@ -2,8 +2,6 @@
   <img src="rc_logo_indy.svg" alt="RC logo animado" width="680"/>
 </p>
 
-![Indy Banner](banner_animated.gif)
-
 <h1 align="center">Indy — ¿Vale la pena verla?</h1>
 
 <p align="center"><em>Un agente de IA con personalidad de perro crítico de cine que decide, con criterio propio, si una película merece tu tiempo.</em></p>

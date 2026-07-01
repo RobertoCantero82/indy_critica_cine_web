@@ -32,7 +32,8 @@ El proyecto nació como agente de terminal y ha evolucionado a una aplicación w
   - Datos curiosos (sustos, muertes de animales, cuarta pared...)
   - Alternativas mejores si el veredicto es negativo
 - **Caché de análisis**: si una película ya se analizó antes, se ofrece reutilizar el informe guardado o repetir el análisis desde cero.
-- **"Voy a tener suerte"**: chat libre donde describes tu plan o estado de ánimo e Indy recomienda una película acorde, con plataforma de streaming incluida.
+- **"Chatea con Indy"**: chat libre donde describes tu plan o estado de ánimo e Indy recomienda una película acorde, con plataforma de streaming incluida.
+- **"¿Por qué me llamo Indy?"**: cuenta la historia del perro que ha inspirado al agente.
 
 ---
 

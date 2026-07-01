@@ -10,16 +10,16 @@
 
 ## 🐾 Descripción
 
-**Indy** es un agente conversacional que analiza cualquier película y emite un veredicto honesto — recomendable o no — adaptado al perfil del espectador que pregunta. No es un agregador de puntuaciones: cruza datos reales de varias fuentes (crítica, público, plataformas de streaming, curiosidades) con un modelo de lenguaje que decide y argumenta como lo haría un cinéfilo con carácter.
+**Indy** es un agente conversacional que analiza cualquier película y emite un veredicto honesto, película recomendable o no, adaptado al perfil del espectador que pregunta. No es un agregador de puntuaciones: cruza datos reales de varias fuentes (crítica, público, plataformas de streaming, curiosidades) con un modelo de lenguaje que decide y argumenta como lo haría un cinéfilo con carácter.
 
-El proyecto nació como agente de terminal y ha evolucionado a una aplicación web completa: **backend en FastAPI** que orquesta el agente con un bucle **ReAct** (percibir → razonar → actuar → observar), y **frontend en React + Vite** con una experiencia de usuario cuidada — autocompletado de títulos con póster, pegatinas de perfil ilustradas y un informe final con formato de ficha de cine.
+El proyecto nació como agente de terminal y ha evolucionado a una aplicación web completa: **backend en FastAPI** que orquesta el agente con un bucle **ReAct** (percibir → razonar → actuar → observar), y **frontend en React + Vite** con una experiencia de usuario cuidada. Existe el autocompletado de títulos con póster, pegatinas de perfil ilustradas y un informe final con formato de ficha de cine.
 
 ---
 
 ## ✨ Funcionalidades
 
-- **Búsqueda con autocompletado**: escribes el título y aparecen coincidencias reales de TMDB con póster, título y año — sin necesidad de indicar el año a mano ni adivinar el título original en inglés.
-- **Veredicto con criterio real**: la recomendación pondera la nota media de crítica y público, no repite el mismo "sí" de forma automática — una película floja recibe un "no" honesto.
+- **Búsqueda con autocompletado**: escribes el título y aparecen coincidencias reales de TMDB con póster, título y año (sin necesidad de indicar el año a mano ni adivinar el título original en inglés).
+- **Veredicto con criterio real**: la recomendación pondera la nota media de crítica y público, no repite el mismo "sí" de forma automática y una película floja recibe un "no" honesto.
 - **Perfiles de espectador**: 5 perfiles ilustrados (Palomitero, Cinéfilo, Fantasioso, Intenso, Curioso) que cambian el tono y el enfoque del análisis.
 - **Informe completo por película**:
   - Sinopsis sin spoilers

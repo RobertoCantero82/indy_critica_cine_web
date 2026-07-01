@@ -32,16 +32,14 @@ export default function App() {
   const [posterUrl, setPosterUrl] = useState(null)
   const [mostrarModal, setMostrarModal] = useState(false)
   const [mostrarSuerteModal, setMostrarSuerteModal] = useState(false)
-  const [suerteGenero, setSuerteGenero] = useState('Acción')
   const [suertePlataforma, setSuertePlataforma] = useState('Netflix')
-  const [suertePerfil, setSuertePerfil] = useState('palomitero')
   const [suertePrompt, setSuertePrompt] = useState('')
   const [suerteCargando, setSuerteCargando] = useState(false)
   const [esSuerte, setEsSuerte] = useState(false)
   const [suerteResultado, setSuerteResultado] = useState(null)
   const [suerteError, setSuerteError] = useState(null)
   const [forzarNuevo, setForzarNuevo] = useState(false)
-  const [tituloAnioPendiente, setTituloAnioPendiente] = useState({ titulo: '', anio: null })
+  const [tituloAnioPendiente, setTituloAnioPendiente] = useState({ titulo: '', anio: null, tmdb_id: null })
   const [easterEggActivo, setEasterEggActivo] = useState(false)
 
   const handleSuerteRecomendar = async () => {
@@ -96,18 +94,31 @@ export default function App() {
   }
 
   // compruebo si ya existe caché justo al confirmar el título, antes de preguntar el perfil
-  const comprobarTitulo = async (titulo, anio) => {
+  const comprobarTitulo = async (titulo, anio, tmdb_id) => {
     try {
       const res   = await fetch(`${API}/cache`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo }) })
       const cache = await res.json()
       if (cache.cache) {
         setCacheInfo(cache)
-        setTituloAnioPendiente({ titulo, anio })
+        setTituloAnioPendiente({ titulo, anio, tmdb_id: tmdb_id || null })
         setEstado('cache')
         return true
       }
     } catch (e) { console.error(e) }
     return false
+  }
+
+  // autocompleta coincidencias con póster mientras el usuario escribe el título — con debounce en el propio formulario
+  const buscarCandidatos = async (titulo, signal) => {
+    const res = await fetch(`${API}/buscar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo }),
+      signal,
+    })
+    if (!res.ok) throw new Error('error buscando coincidencias')
+    const data = await res.json()
+    return data.candidatos || []
   }
 
   const ejecutarAgente = async (datos, forzar_nuevo) => {
@@ -120,7 +131,7 @@ export default function App() {
     } catch (e) { setEstado('form'); alert('Error: ' + e.message) }
   }
 
-  const handleVolver = () => { setEstado('intro'); setInforme(null); setVideoId(null); setEsLofi(false); setPosterUrl(null); setEsSuerte(false) }
+  const handleVolver = () => { setEstado('intro'); setInforme(null); setVideoId(null); setEsLofi(false); setPosterUrl(null); setEsSuerte(false); setTituloAnioPendiente({ titulo: '', anio: null, tmdb_id: null }); setForzarNuevo(false) }
 
   return (
     <div style={{
@@ -223,11 +234,13 @@ export default function App() {
       {estado === 'form' && (
         <Formulario
           onBuscar={(datos) => { setEsSuerte(false); handleBuscar(datos) }}
-          onVolver={() => setEstado('intro')}
+          onVolver={() => { setEstado('intro'); setTituloAnioPendiente({ titulo: '', anio: null, tmdb_id: null }); setForzarNuevo(false) }}
           onComprobarTitulo={comprobarTitulo}
+          onBuscarCandidatos={buscarCandidatos}
           startAtStep2={forzarNuevo}
           tituloInicial={tituloAnioPendiente.titulo}
           anioInicial={tituloAnioPendiente.anio}
+          tmdbIdInicial={tituloAnioPendiente.tmdb_id}
         />
       )}
 

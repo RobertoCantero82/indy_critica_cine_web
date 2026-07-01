@@ -23,11 +23,11 @@ class IndyAgent:
 
     # defino el constructor de la clase
     def __init__(self):
-        # instancio el buscador de datos de películas
+        # buscador de datos de películas
         self.buscador = Buscador()
-        # instancio el generador de veredicto
+        # generador de veredicto
         self.veredicto = Veredicto()
-        # instancio el gestor de informes
+        # gestor de informes
         self.informe = Informe()
 
         # estado de la sesión actual
@@ -35,6 +35,8 @@ class IndyAgent:
         self.titulo = None
         # guardo el año de la película consultada
         self.anio = None
+        # guardo el id de tmdb si el usuario eligió la película de la lista de candidatos
+        self.tmdb_id = None
         # guardo el perfil del usuario que hace la consulta
         self.perfil_usuario = None
         # guardo el nombre del usuario que hace la consulta
@@ -58,6 +60,8 @@ class IndyAgent:
         self.titulo = None
         # vacío el año guardado
         self.anio = None
+        # vacío el id de tmdb guardado
+        self.tmdb_id = None
         # vacío el perfil del usuario guardado
         self.perfil_usuario = None
         # vacío el nombre del usuario guardado
@@ -115,6 +119,7 @@ class IndyAgent:
         perfil_usuario: str,
         anio: int = None,
         nombre_usuario: str = None,
+        tmdb_id: int = None,
     ) -> dict:
         """
         recibe el input del usuario y prepara el estado inicial.
@@ -127,6 +132,8 @@ class IndyAgent:
         self.titulo = titulo.strip()
         # guardo el año recibido
         self.anio = anio
+        # guardo el id de tmdb recibido si el usuario eligió la película de la lista de candidatos
+        self.tmdb_id = tmdb_id
         # guardo el perfil del usuario recibido
         self.perfil_usuario = perfil_usuario
         # guardo el nombre del usuario recibido
@@ -204,8 +211,8 @@ class IndyAgent:
         # registro el mensaje de que se está buscando
         self._registrar_paso(MENSAJES_CARGA["buscando"])
 
-        # ejecuto el buscador con el título y el año guardados
-        datos = self.buscador.ejecutar(self.titulo, self.anio)
+        # ejecuto el buscador con el título el año y el id de tmdb guardados
+        datos = self.buscador.ejecutar(self.titulo, self.anio, self.tmdb_id)
 
         # registro errores parciales sin interrumpir
         # compruebo si el buscador devolvió errores parciales
@@ -369,6 +376,7 @@ class IndyAgent:
         anio: int = None,
         nombre_usuario: str = None,
         forzar_nuevo: bool = False,
+        tmdb_id: int = None,
     ) -> dict:
         """
         punto de entrada principal del agente.
@@ -378,7 +386,7 @@ class IndyAgent:
 
         # — percibir —
         # ejecuto la fase de percepción con los datos recibidos
-        percepcion = self.percibir(titulo, perfil_usuario, anio, nombre_usuario)
+        percepcion = self.percibir(titulo, perfil_usuario, anio, nombre_usuario, tmdb_id)
 
         # compruebo si la percepción inicial falló
         if not percepcion["ok"]:

@@ -459,26 +459,50 @@ Sin texto adicional, solo el JSON.
         # obtengo la descripción del perfil del usuario o uso una genérica
         descripcion_perfil = PERFILES.get(perfil, "espectador general")
 
+        # calculo una nota media orientativa a partir de las puntuaciones disponibles
+        critica = datos.get("puntuacion_critica")
+        publico = datos.get("puntuacion_publico")
+        notas = [n for n in (critica, publico) if n is not None]
+        media = round(sum(notas) / len(notas), 1) if notas else None
+
+        # clasifico la calidad orientativa según la media para anclar el criterio del modelo
+        if media is None:
+            calidad = "sin datos suficientes — usa tu propio criterio sobre la película"
+        elif media >= 7.5:
+            calidad = "buena/notable"
+        elif media >= 6:
+            calidad = "correcta pero con peros"
+        elif media >= 4.5:
+            calidad = "mediocre — floja de verdad"
+        else:
+            calidad = "mala — no se sostiene"
+
         # construyo el prompt con todos los datos de la película y el perfil del usuario
         prompt = f"""
 Película: "{datos['titulo']}" ({datos['anio']})
 Géneros: {', '.join(datos['generos'])}
 Director: {datos.get('director', 'desconocido')}
-Puntuación crítica: {datos.get('puntuacion_critica')}/10
-Puntuación público: {datos.get('puntuacion_publico')}/10
+Puntuación crítica: {critica}/10
+Puntuación público: {publico}/10
+Nota media orientativa: {media}/10 → calidad {calidad}
 Perfil del espectador: {descripcion_perfil}
 
-Responde EXACTAMENTE en este formato, sin nada más:
+CRITERIO DE DECISIÓN (esto manda por encima del tono simpático):
+- La recomendación tiene que reflejar si la película es objetivamente buena o mala, no solo si "encaja" con el perfil por género.
+- Si la nota media es baja (mediocre o mala), tu recomendación por defecto debe ser NO, salvo que sea una película de culto que ese perfil concreto disfrutaría pese a sus defectos evidentes (y en ese caso dilo explícitamente).
+- No tengas miedo de decir NO. Eres un crítico honesto, no un vendedor de entradas. Que la película exista y tenga género no la hace recomendable.
+
+Responde EXACTAMENTE en uno de estos dos formatos, sin nada más:
 
 RECOMENDACIÓN: SÍ
 RAZÓN: [frase de 8-12 palabras que explique POR QUÉ es recomendable para este perfil concreto. Ejemplo: "Un thriller de ritmo trepidante perfecto para el que busca adrenalina"]
 PÁRRAFO: [3-4 frases con tu opinión como Indy. Con criterio y personalidad. Sin repetir la razón. Sin mencionar las puntuaciones con números. Adaptado al perfil del espectador.]
 
-O si no la recomiendas:
+O bien:
 
 RECOMENDACIÓN: NO
-RAZÓN: [frase de 8-12 palabras explicando por qué NO encaja con este perfil]
-PÁRRAFO: [3-4 frases honestas. Sin piedad pero con clase.]
+RAZÓN: [frase de 8-12 palabras explicando por qué NO merece la pena para este perfil. Ejemplo: "Efectos anticuados y guion perezoso que ni la nostalgia salva"]
+PÁRRAFO: [3-4 frases honestas y directas sobre por qué falla la película. Sin piedad pero con clase. Nada de suavizarlo al final con un "aun así, dale una oportunidad".]
 
 IMPORTANTE: el "perfil del espectador" describe los gustos de la persona que va a leer esto, NO es un personaje ni un elemento de la película. Nunca escribas el nombre del perfil (por ejemplo "El Fantástico", "El Palomitero") dentro de la razón ni del párrafo, ni hables de él en tercera persona como si apareciera en la trama. Úsalo solo para decidir el tono y el enfoque del texto.
 """
@@ -488,14 +512,14 @@ IMPORTANTE: el "perfil del espectador" describe los gustos de la persona que va 
         # importo re para extraer las partes del texto devuelto por el modelo
         import re
 
-        # inicializo la recomendación con un valor por defecto positivo
-        recomendacion = "SÍ"
+        # inicializo la recomendación con un valor por defecto que respeta la nota media
+        # si el modelo no devuelve un formato parseable, mejor fiarse de los datos que asumir un "sí" a ciegas
+        recomendacion = "NO" if (media is not None and media < 4.5) else "SÍ"
         # inicializo la razón como vacía
         razon = ""
         # inicializo el párrafo con todo el texto bruto por si no se puede parsear
         parrafo = raw.strip()
 
-        # extraer RECOMENDACIÓN
         # busco la línea que contiene la recomendación
         m = re.search(r'RECOMENDACI[OÓ]N\s*:\s*(.+)', raw, re.IGNORECASE)
         # compruebo si se encontró la línea de recomendación
@@ -505,12 +529,11 @@ IMPORTANTE: el "perfil del espectador" describe los gustos de la persona que va 
             # determino si la recomendación es positiva según las palabras encontradas
             recomendacion = "SÍ" if any(x in val for x in ("SÍ", "SI", "YES")) else "NO"
 
-        # extraer RAZÓN (una línea)
         # busco la línea que contiene la razón
         # tolero erratas del modelo en la etiqueta del párrafo, por ejemplo PÁRRAFA en vez de PÁRRAFO
         etiqueta_parrafo = r'P[AÁ]RR?AF[OA]?'
 
-        # extraer RAZÓN, parando antes de la etiqueta del párrafo para no arrastrarla
+        # paro antes de la etiqueta del párrafo para no arrastrarla dentro de la razón
         # si el modelo responde todo en una sola línea sin saltos
         m = re.search(r'RAZ[OÓ]N\s*:\s*(.+?)(?=\s*' + etiqueta_parrafo + r'\s*:|$)', raw, re.IGNORECASE | re.DOTALL)
         # compruebo si se encontró la línea de razón
@@ -518,7 +541,6 @@ IMPORTANTE: el "perfil del espectador" describe los gustos de la persona que va 
             # extraigo el texto de la razón encontrada
             razon = m.group(1).strip()
 
-        # extraer PÁRRAFO (puede ser multilínea — todo lo que sigue hasta fin de texto)
         # busco el bloque de texto del párrafo que puede ocupar varias líneas, tolerando erratas en la etiqueta
         m = re.search(etiqueta_parrafo + r'\s*:\s*(.+)', raw, re.IGNORECASE | re.DOTALL)
         # compruebo si se encontró el bloque del párrafo

@@ -23,37 +23,13 @@ COMPORTAMIENTO
 - El veredicto es tuyo. No eres un agregador de puntuaciones, eres quien decide. Lo escribes como te salga.
 - Cuando la película no vale la pena, sugieres 2-3 alternativas mejores similares.
 
-FORMATO DE SALIDA
-Devuelves siempre un JSON con esta estructura exacta:
-{
-    "titulo_anio": "...",
-    "de_que_va": "...",
-    "critica_vs_publico": {
-        "puntuacion_critica": 0.0,
-        "puntuacion_publico": 0.0,
-        "diferencia": 0.0,
-        "quien_gana": "publico | critica | empate",
-        "comentario": "..."
-    },
-    "indice_giros": "🎯 Predecible | 🤔 Alguna sorpresa | 😮 Bastantes giros | 🤯 No te fíes de nadie",
-    "post_creditos": "sí | no | desconocido",
-    "streaming_espana": ["plataforma1", "plataforma2"],
-    "banda_sonora": {
-        "compositor": "...",
-        "album": "...",
-        "url_youtube": "..."
-    },
-    "snack": {
-        "snack": "...",
-        "justificacion": "..."
-    },
-    "alternativas": ["peli1", "peli2", "peli3"] ,
-    "veredicto": "..."
-}
-
-REGLAS DEL JSON
-- alternativas solo se rellena si el veredicto es negativo. Si es positivo, devuelve null.
-- Nunca devuelvas texto fuera del JSON. Solo el JSON.
+FORMATO DE RESPUESTA
+Este system prompt te acompaña en varias llamadas independientes, una por cada sección del informe
+(sinopsis, comparación crítica/público, índice de giros, post-créditos, banda sonora, snack, alternativas).
+Cada llamada te pide un fragmento concreto — una frase, una etiqueta o un pequeño JSON — nunca el informe
+completo de golpe. El informe final lo ensambla el código de veredicto.py combinando cada respuesta, tú
+no ves ni devuelves esa estructura completa. Sigue siempre el formato exacto que se te pide en cada
+mensaje de usuario, sin añadir texto, explicaciones ni bloques de código markdown fuera de lo solicitado.
 """
 
 # perfiles de usuario confirmados

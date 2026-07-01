@@ -53,11 +53,19 @@ class ConsultaRequest(BaseModel):
     nombre_usuario: Optional[str] = None
     # guardo si se debe forzar un nuevo análisis aunque exista caché
     forzar_nuevo: bool = False
+    # guardo el id de tmdb si el usuario eligió la película de la lista de candidatos con póster
+    tmdb_id: Optional[int] = None
 
 
 # defino el esquema de entrada para comprobar si hay caché de una película
 class CacheRequest(BaseModel):
     # guardo el título de la película como texto obligatorio
+    titulo: str
+
+
+# defino el esquema de entrada para el autocompletado de títulos con póster
+class BuscarRequest(BaseModel):
+    # guardo el texto que el usuario ha escrito hasta el momento
     titulo: str
 
 
@@ -82,6 +90,23 @@ def comprobar_cache(req: CacheRequest):
     return {"cache": False}
 
 
+# defino el endpoint que autocompleta títulos con póster para elegir la coincidencia exacta
+@app.post("/buscar")
+def buscar_pelicula(req: BuscarRequest):
+    """
+    busca coincidencias en tmdb mientras el usuario escribe, con póster y año,
+    para que elija la película exacta antes de lanzar el análisis completo.
+    """
+    # pido al buscador del agente la lista de candidatos para el texto recibido
+    resultado = agente.buscador.buscar_candidatos(req.titulo)
+    # compruebo si la búsqueda de candidatos falló por un error de conexión
+    if not resultado["ok"]:
+        # lanzo una excepción http 502 indicando que falló el servicio externo
+        raise HTTPException(status_code=502, detail=resultado["error"])
+    # devuelvo la lista de candidatos encontrados aunque esté vacía
+    return resultado
+
+
 # defino el endpoint que ejecuta el análisis completo de una película
 @app.post("/analizar")
 def analizar(req: ConsultaRequest):
@@ -98,6 +123,8 @@ def analizar(req: ConsultaRequest):
         nombre_usuario=req.nombre_usuario,
         # paso si se debe forzar un nuevo análisis
         forzar_nuevo=req.forzar_nuevo,
+        # paso el id de tmdb si el usuario eligió la película de la lista de candidatos
+        tmdb_id=req.tmdb_id,
     )
 
     # compruebo si el resultado indica que algo falló
@@ -179,7 +206,6 @@ def recomendar(req: RecomendarRequest):
         """
     # intento llamar al modelo y parsear su respuesta
     try:
-        # Llamar al cliente Groq del agente para obtener la recomendación
         # uso el cliente groq del veredicto del agente para pedir la respuesta
         respuesta = agente.veredicto.cliente.chat.completions.create(
             # uso el modelo configurado en el veredicto del agente
@@ -199,7 +225,6 @@ def recomendar(req: RecomendarRequest):
         # extraigo el texto de la respuesta y quito espacios sobrantes
         texto_raw = respuesta.choices[0].message.content.strip()
 
-        # Intentar limpiar posibles bloques markdown si el LLM los pone
         # compruebo si el texto empieza con un bloque de código markdown
         if texto_raw.startswith("```"):
             # quito la primera línea que contiene la marca de bloque de código
@@ -217,7 +242,6 @@ def recomendar(req: RecomendarRequest):
         return datos
     # capturo cualquier error que ocurra durante la llamada o el parseo
     except Exception as e:
-        # Si falla el parseo o la llamada, devolver una película de respaldo clásica según el género
         # defino un diccionario de películas de respaldo por cada género
         respaldos = {
             # asigno una película de respaldo para el género acción

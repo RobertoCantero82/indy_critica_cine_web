@@ -237,6 +237,225 @@ class Buscador(Herramienta):
             # devuelvo un error indicando que falló la conexión
             return {"ok": False, "error": f"error de conexión — {str(e)}"}
 
+    # defino el método que busca coincidencias en tmdb para que el usuario elija la película exacta
+    def buscar_candidatos(self, titulo: str, limite: int = 6) -> dict:
+        """
+        autocompletado con póster: busca en tmdb por texto libre (sin año)
+        y devuelve varias coincidencias para que el usuario elija la correcta
+        antes de lanzar el análisis completo.
+        """
+        # intento realizar la búsqueda y manejar posibles errores
+        try:
+            # hago la petición de búsqueda de películas a tmdb en español
+            resp = requests.get(
+                # uso el endpoint de búsqueda de películas de tmdb
+                "https://api.themoviedb.org/3/search/movie",
+                # paso el texto de búsqueda el idioma y excluyo contenido para adultos
+                params={"api_key": self.tmdb_key, "query": titulo, "language": "es-ES", "include_adult": "false"},
+                # limito el tiempo de espera de la petición
+                timeout=5,
+            )
+            # extraigo la lista de resultados devuelta por tmdb
+            resultados = resp.json().get("results", [])
+            # construyo la lista de candidatos a partir de los primeros resultados
+            candidatos = []
+            # recorro los resultados hasta el límite indicado
+            for r in resultados[:limite]:
+                # extraigo el año a partir de la fecha de estreno si existe
+                anio = (r.get("release_date") or "")[:4] or None
+                # extraigo la ruta del póster si está disponible
+                poster_path = r.get("poster_path")
+                # añado el candidato con los datos mínimos para mostrar y para reconsultar por id
+                candidatos.append({
+                    # incluyo el id de tmdb para poder resolver el resto de datos sin ambigüedad
+                    "tmdb_id": r.get("id"),
+                    # incluyo el título en español devuelto por tmdb
+                    "titulo": r.get("title"),
+                    # incluyo el título original para referencia
+                    "titulo_original": r.get("original_title"),
+                    # incluyo el año extraído de la fecha de estreno
+                    "anio": anio,
+                    # construyo una miniatura del póster en tamaño pequeño para la lista de resultados
+                    "poster_url": f"https://image.tmdb.org/t/p/w185{poster_path}" if poster_path else None,
+                    # incluyo un fragmento corto de la sinopsis como ayuda visual
+                    "sinopsis": (r.get("overview") or "")[:160],
+                })
+            # devuelvo la lista de candidatos aunque esté vacía
+            return {"ok": True, "candidatos": candidatos}
+        # capturo cualquier excepción de conexión ocurrida durante la búsqueda
+        except Exception as e:
+            # devuelvo un error indicando que falló la conexión
+            return {"ok": False, "error": f"error de conexión — {str(e)}"}
+
+    # defino el método que consulta el detalle de tmdb ya conociendo su id exacto
+    def _consultar_tmdb_por_id(self, tmdb_id: int) -> dict:
+        """
+        mismo resultado que _consultar_tmdb pero sin volver a buscar por texto:
+        se usa cuando el usuario ya eligió la película exacta de la lista de candidatos.
+        """
+        # intento realizar la consulta y manejar posibles errores
+        try:
+            # hago la petición de detalle de la película incluyendo créditos
+            detalle = requests.get(
+                # uso el endpoint de detalle de película con el id ya conocido
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}",
+                # paso la clave de api el idioma y pido los créditos adicionales
+                params={"api_key": self.tmdb_key, "language": "es-ES", "append_to_response": "credits"},
+                # limito el tiempo de espera de la petición
+                timeout=5,
+            )
+            # convierto la respuesta de detalle a un diccionario json
+            datos = detalle.json()
+            # compruebo si tmdb indica explícitamente que no encontró el id
+            if datos.get("success") is False:
+                # devuelvo el error indicado por tmdb o uno genérico
+                return {"ok": False, "error": datos.get("status_message", "película no encontrada en tmdb")}
+
+            # inicializo el compositor como vacío
+            compositor = None
+            # recorro el equipo técnico incluido en los créditos
+            for persona in datos.get("credits", {}).get("crew", []):
+                # compruebo si la persona tiene el cargo de compositor original
+                if persona.get("job") == "Original Music Composer":
+                    # guardo el nombre del compositor encontrado
+                    compositor = persona.get("name")
+                    # dejo de buscar una vez encontrado el compositor
+                    break
+
+            # extraigo la ruta del póster devuelta por tmdb
+            poster_path = datos.get("poster_path")
+            # construyo la url completa del póster si existe la ruta
+            poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+
+            # devuelvo un diccionario con los datos obtenidos de tmdb
+            return {
+                # indico que la consulta fue exitosa
+                "ok": True,
+                # incluyo la sinopsis en español
+                "sinopsis": datos.get("overview"),
+                # incluyo el compositor encontrado
+                "compositor": compositor,
+                # incluyo el título original de la película
+                "titulo_original": datos.get("original_title"),
+                # incluyo la url del póster construida antes
+                "poster_url": poster_url,
+            }
+        # capturo cualquier excepción de conexión ocurrida durante la consulta
+        except Exception as e:
+            # devuelvo un error indicando que falló la conexión
+            return {"ok": False, "error": f"error de conexión — {str(e)}"}
+
+    # defino el método que mapea un id de tmdb a su id de imdb equivalente
+    def _obtener_imdb_id(self, tmdb_id: int) -> str | None:
+        """traduce un id de tmdb a su id de imdb para poder consultar omdb sin depender del texto del título."""
+        # intento realizar la consulta y manejar posibles errores
+        try:
+            # hago la petición al endpoint de identificadores externos de tmdb
+            resp = requests.get(
+                # uso el endpoint de identificadores externos con el id de tmdb ya conocido
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}/external_ids",
+                # paso la clave de api necesaria
+                params={"api_key": self.tmdb_key},
+                # limito el tiempo de espera de la petición
+                timeout=5,
+            )
+            # devuelvo el id de imdb encontrado o none si no viene en la respuesta
+            return resp.json().get("imdb_id") or None
+        # capturo cualquier excepción ocurrida durante la consulta y la ignoro
+        except Exception:
+            # devuelvo none si la consulta falló por cualquier motivo
+            return None
+
+    # defino el método que consulta omdb directamente por id de imdb
+    def _consultar_omdb_por_imdb_id(self, imdb_id: str) -> dict:
+        """
+        consulta omdb por id exacto de imdb — la vía más fiable posible,
+        porque no depende de que el texto del título coincida.
+        """
+        # intento realizar la consulta y manejar posibles errores
+        try:
+            # hago la petición a omdb usando el identificador imdb como parámetro
+            resp = requests.get(
+                # uso el endpoint principal de omdb
+                "http://www.omdbapi.com/",
+                # paso la clave de api y el identificador imdb
+                params={"apikey": self.omdb_key, "i": imdb_id},
+                # limito el tiempo de espera de la petición
+                timeout=5,
+            )
+            # convierto la respuesta a un diccionario json
+            datos = resp.json()
+            # compruebo si la respuesta no fue exitosa
+            if datos.get("Response") != "True":
+                # devuelvo el error indicado por omdb o uno genérico
+                return {"ok": False, "error": datos.get("Error", "sin datos del film")}
+
+            # inicializo las puntuaciones de crítica y público como vacías
+            critica = publico = None
+            # recorro la lista de puntuaciones devueltas por omdb
+            for r in datos.get("Ratings", []):
+                # compruebo si la fuente es rotten tomatoes
+                if r["Source"] == "Rotten Tomatoes":
+                    # convierto el porcentaje de rotten tomatoes a una escala de diez
+                    critica = float(r["Value"].replace("%", "")) / 10
+                # compruebo si la fuente es imdb
+                if r["Source"] == "Internet Movie Database":
+                    # extraigo la puntuación de imdb como número
+                    publico = float(r["Value"].split("/")[0])
+
+            # devuelvo un diccionario con todos los datos encontrados
+            return {
+                # indico que la consulta fue exitosa
+                "ok": True,
+                # incluyo el título de la película
+                "titulo": datos.get("Title"),
+                # incluyo el año de la película
+                "anio": datos.get("Year"),
+                # incluyo la duración en minutos
+                "duracion_min": datos.get("Runtime"),
+                # incluyo la lista de géneros separados por coma
+                "generos": datos.get("Genre", "").split(", "),
+                # incluyo el director de la película
+                "director": datos.get("Director"),
+                # incluyo la sinopsis de la película
+                "sinopsis": datos.get("Plot"),
+                # incluyo la puntuación de la crítica calculada antes
+                "puntuacion_critica": critica,
+                # incluyo la puntuación del público calculada antes
+                "puntuacion_publico": publico,
+            }
+        # capturo cualquier excepción de conexión ocurrida durante la consulta
+        except Exception as e:
+            # devuelvo un error indicando que falló la conexión
+            return {"ok": False, "error": f"error de conexión — {str(e)}"}
+
+    # defino el método que resuelve todos los datos a partir de un id de tmdb ya elegido por el usuario
+    def _resolver_por_tmdb_id(self, tmdb_id: int, titulo_fallback: str) -> tuple[dict, dict | None]:
+        """
+        cuando el usuario ya eligió la película exacta de la lista de candidatos,
+        nos apoyamos en el id de tmdb en vez de en el llm adivinando el título en inglés.
+        """
+        # consulto el detalle de tmdb directamente por el id ya conocido
+        tmdb_detalle = self._consultar_tmdb_por_id(tmdb_id)
+        # extraigo el título original en inglés si la consulta fue exitosa
+        titulo_en = tmdb_detalle.get("titulo_original") if tmdb_detalle.get("ok") else None
+        # obtengo el id de imdb equivalente para consultar omdb de forma exacta
+        imdb_id = self._obtener_imdb_id(tmdb_id)
+        # compruebo si obtuve el id de imdb
+        if imdb_id:
+            # consulto omdb por el id de imdb que es la vía más fiable
+            omdb = self._consultar_omdb_por_imdb_id(imdb_id)
+        # si no hay id de imdb pero sí tengo el título original en inglés
+        elif titulo_en:
+            # consulto omdb por el título original en inglés obtenido de tmdb
+            omdb = self._consultar_omdb(titulo_en, None)
+        # como último recurso uso el título tal cual lo escribió el usuario
+        else:
+            # consulto omdb con el título de respaldo recibido
+            omdb = self._consultar_omdb(titulo_fallback, None)
+        # devuelvo tanto el resultado de omdb como el detalle de tmdb ya consultado
+        return omdb, tmdb_detalle
+
     # defino el método que consulta tmdb para obtener sinopsis y compositor
     def _consultar_tmdb(self, titulo: str, anio: str = None) -> dict:
         """sinopsis en español y compositor desde tmdb."""
@@ -386,7 +605,6 @@ class Buscador(Herramienta):
                 link = opcion.get("link", "")
                 # compruebo que el servicio tenga un nombre válido
                 if servicio:
-                    # Evitar duplicados por nombre de servicio
                     # compruebo que el servicio no esté ya añadido a la lista
                     if not any(p["nombre"] == servicio for p in plataformas):
                         # añado la plataforma con su nombre y su enlace
@@ -410,7 +628,6 @@ class Buscador(Herramienta):
         """indica si la película tiene escenas post-créditos."""
         # intento realizar la consulta y manejar posibles errores
         try:
-            # Eliminar caracteres especiales para la URL
             # quito caracteres no alfanuméricos del título para formar la url
             titulo_limpio = "".join(c for c in titulo.lower() if c.isalnum() or c == " ").strip()
             # sustituyo los espacios por guiones para formar la url
@@ -427,7 +644,6 @@ class Buscador(Herramienta):
                 headers={"User-Agent": "Mozilla/5.0"},
             )
 
-            # Si da 404, intentar con el año si está disponible
             # compruebo si la página no existe y si tengo el año disponible
             if respuesta.status_code == 404 and anio:
                 # construyo una url alternativa incluyendo el año
@@ -727,8 +943,13 @@ class Buscador(Herramienta):
         return self._buscar_video_youtube(query)
 
     # defino el método principal que combina todas las fuentes de datos
-    def ejecutar(self, titulo: str, anio: int = None) -> dict:
-        """consolida los resultados de todas las fuentes."""
+    def ejecutar(self, titulo: str, anio: int = None, tmdb_id: int = None) -> dict:
+        """
+        consolida los resultados de todas las fuentes.
+        si se recibe tmdb_id (el usuario ya eligió la película en la lista de candidatos
+        con póster) se resuelve todo por id exacto, sin depender de que el llm adivine
+        el título en inglés ni de coincidencias de texto en omdb.
+        """
         # inicializo el diccionario de resultado con valores por defecto
         resultado = {
             # inicializo el título como vacío
@@ -769,29 +990,39 @@ class Buscador(Herramienta):
             "errores": [],
         }
 
-        # 1) traducir título al inglés vía llm
-        # traduzco el título al inglés o uso el original si falla la traducción
-        titulo_en = self._titulo_en_ingles(titulo) or titulo
+        # si el usuario ya eligió la película exacta de la lista de candidatos con póster
+        # compruebo si recibí un id de tmdb para resolver todo sin ambigüedad
+        if tmdb_id:
+            # resuelvo omdb y el detalle de tmdb directamente por id, sin adivinar nada
+            omdb, tmdb_extra = self._resolver_por_tmdb_id(tmdb_id, titulo)
+        # si no hay id de tmdb caigo en el flujo clásico de adivinar el título
+        else:
+            # 1) traducir título al inglés vía llm
+            # traduzco el título al inglés o uso el original si falla la traducción
+            titulo_en = self._titulo_en_ingles(titulo) or titulo
 
-        # 2) búsqueda exacta con el título traducido
-        # consulto omdb usando el título traducido
-        omdb = self._consultar_omdb(titulo_en, anio)
+            # 2) búsqueda exacta con el título traducido
+            # consulto omdb usando el título traducido
+            omdb = self._consultar_omdb(titulo_en, anio)
 
-        # 3) búsqueda exacta con el título original si el traducido falló
-        # si la búsqueda con el título traducido falló pruebo con el original
-        if not omdb["ok"] and titulo_en.lower() != titulo.lower():
-            # repito la consulta exacta usando el título original
-            omdb = self._consultar_omdb(titulo, anio)
+            # 3) búsqueda exacta con el título original si el traducido falló
+            # si la búsqueda con el título traducido falló pruebo con el original
+            if not omdb["ok"] and titulo_en.lower() != titulo.lower():
+                # repito la consulta exacta usando el título original
+                omdb = self._consultar_omdb(titulo, anio)
 
-        # 4) búsqueda fuzzy (?s=) con ambos títulos como último recurso
-        # si la búsqueda exacta sigue fallando pruebo la búsqueda fuzzy con el título traducido
-        if not omdb["ok"]:
-            # ejecuto la búsqueda fuzzy con el título traducido
-            omdb = self._buscar_omdb(titulo_en)
-        # si la fuzzy con el traducido falló y los títulos son distintos pruebo con el original
-        if not omdb["ok"] and titulo_en.lower() != titulo.lower():
-            # ejecuto la búsqueda fuzzy con el título original
-            omdb = self._buscar_omdb(titulo)
+            # 4) búsqueda fuzzy (?s=) con ambos títulos como último recurso
+            # si la búsqueda exacta sigue fallando pruebo la búsqueda fuzzy con el título traducido
+            if not omdb["ok"]:
+                # ejecuto la búsqueda fuzzy con el título traducido
+                omdb = self._buscar_omdb(titulo_en)
+            # si la fuzzy con el traducido falló y los títulos son distintos pruebo con el original
+            if not omdb["ok"] and titulo_en.lower() != titulo.lower():
+                # ejecuto la búsqueda fuzzy con el título original
+                omdb = self._buscar_omdb(titulo)
+
+            # sin id de tmdb todavía no tengo el detalle de tmdb consultado
+            tmdb_extra = None
 
         # compruebo si todas las búsquedas en omdb fallaron
         if not omdb["ok"]:
@@ -820,8 +1051,15 @@ class Buscador(Herramienta):
             "puntuacion_publico": omdb["puntuacion_publico"],
         })
 
-        # consulto tmdb para obtener la sinopsis en español y el compositor
-        tmdb = self._consultar_tmdb(resultado["titulo"], resultado.get("anio"))
+        # reutilizo el detalle de tmdb ya consultado por id si lo tengo, para no repetir la llamada
+        # compruebo si ya tengo un detalle de tmdb válido resuelto por id
+        if tmdb_extra and tmdb_extra.get("ok"):
+            # reutilizo directamente ese detalle sin volver a buscar por texto
+            tmdb = tmdb_extra
+        # si no lo tengo consulto tmdb buscando por el título ya confirmado por omdb
+        else:
+            # consulto tmdb para obtener la sinopsis en español y el compositor
+            tmdb = self._consultar_tmdb(resultado["titulo"], resultado.get("anio"))
         # compruebo si la consulta a tmdb fue exitosa
         if tmdb["ok"]:
             # compruebo si tmdb devolvió una sinopsis válida

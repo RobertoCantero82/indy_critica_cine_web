@@ -1,3 +1,13 @@
+---
+title: Agente Indy
+emoji: 🐾
+colorFrom: yellow
+colorTo: red
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 <p align="center">
   <img src="rc_logo_indy.svg" alt="RC logo animado" width="680"/>
 </p>

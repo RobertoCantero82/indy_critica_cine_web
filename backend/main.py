@@ -69,15 +69,15 @@ class BuscarRequest(BaseModel):
     titulo: str
 
 
-# defino el endpoint raíz para comprobar que la api está viva
-@app.get("/")
-def root():
+# defino el endpoint de estado para comprobar que la api está viva
+@app.get("/api/status")
+def status():
     # devuelvo un mensaje simple confirmando que indy está listo
     return {"status": "Indy está listo 🐾"}
 
 
 # defino el endpoint que comprueba si ya existe un informe guardado
-@app.post("/cache")
+@app.post("/api/cache")
 def comprobar_cache(req: CacheRequest):
     """comprueba si la película ya tiene informe guardado."""
     # pido al agente que busque en caché por el título recibido
@@ -91,7 +91,7 @@ def comprobar_cache(req: CacheRequest):
 
 
 # defino el endpoint que autocompleta títulos con póster para elegir la coincidencia exacta
-@app.post("/buscar")
+@app.post("/api/buscar")
 def buscar_pelicula(req: BuscarRequest):
     """
     busca coincidencias en tmdb mientras el usuario escribe, con póster y año,
@@ -108,7 +108,7 @@ def buscar_pelicula(req: BuscarRequest):
 
 
 # defino el endpoint que ejecuta el análisis completo de una película
-@app.post("/analizar")
+@app.post("/api/analizar")
 def analizar(req: ConsultaRequest):
     """ejecuta el agente y devuelve el informe completo."""
     # ejecuto el agente pasándole todos los datos de la petición
@@ -162,7 +162,7 @@ class RecomendarRequest(BaseModel):
 import json
 
 # defino el endpoint que recomienda una película según filtros o prompt libre
-@app.post("/recomendar")
+@app.post("/api/recomendar")
 def recomendar(req: RecomendarRequest):
     """recomienda una película basándose en filtros o en un prompt personalizado con contexto de hora."""
     # compruebo si el usuario escribió un prompt personalizado
@@ -263,3 +263,15 @@ def recomendar(req: RecomendarRequest):
         res = respaldos.get(req.genero, {"titulo": "Inception", "anio": 2010, "justificacion_eleccion": "Un sueño dentro de un sueño para estrujarte el cerebro."})
         # devuelvo la película de respaldo como resultado del endpoint
         return res
+
+
+# --- A PARTIR DE AQUÍ, TODAS LAS RUTAS /api YA ESTÁN REGISTRADAS ---
+
+# importo staticfiles para servir el frontend de react ya compilado
+from fastapi.staticfiles import StaticFiles
+
+# monto la carpeta "static" (build de vite) en la raíz, sirviendo index.html
+# como fallback para "/" y cualquier archivo estático (imágenes de public/, assets/, etc.)
+# esto solo existe si la carpeta "static" fue copiada al construir la imagen docker
+if os.path.isdir("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")

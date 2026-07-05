@@ -2,8 +2,9 @@ import { useState } from 'react'
 import Formulario from './components/Formulario'
 import Informe from './components/Informe'
 import Cargando from './components/Cargando'
+import { API_BASE } from './config'
 
-const API = 'http://localhost:8000'
+const API = `${API_BASE}/api`
 
 const URLS_PLATAFORMA = {
   'Netflix':     titulo => `https://www.netflix.com/search?q=${encodeURIComponent(titulo)}`,

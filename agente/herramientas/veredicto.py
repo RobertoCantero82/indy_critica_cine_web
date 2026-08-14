@@ -32,7 +32,7 @@ class Veredicto:
         # instancio el cliente de groq con su clave de api
         self.cliente = Groq(api_key=os.getenv("GROQ_API_KEY"))
         # guardo el nombre del modelo que se usará en todas las llamadas
-        self.modelo = "llama-3.1-8b-instant"
+        self.modelo = "llama-3.3-70b-versatile"
 
     # — método auxiliar: llamada al llm —
 

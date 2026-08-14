@@ -60,7 +60,7 @@ class Buscador(Herramienta):
             # pido al modelo el título original en inglés de la película
             resp = self.groq.chat.completions.create(
                 # uso un modelo rápido y económico para esta tarea sencilla
-                model="llama-3.1-8b-instant",
+                model="llama-3.3-70b-versatile",
                 # construyo el mensaje de usuario con instrucciones y ejemplos
                 messages=[{
                     # defino el rol como usuario

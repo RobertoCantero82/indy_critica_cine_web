@@ -630,10 +630,10 @@ class Buscador(Herramienta):
         """indica si la película tiene escenas post-créditos."""
         # intento realizar la consulta y manejar posibles errores
         try:
-            # quito caracteres no alfanuméricos del título para formar la url
-            titulo_limpio = "".join(c for c in titulo.lower() if c.isalnum() or c == " ").strip()
-            # sustituyo los espacios por guiones para formar la url
-            titulo_url = titulo_limpio.replace(" ", "-")
+            # importo re para construir el slug de la url
+            import re
+            # convierto cualquier grupo de caracteres no alfanuméricos en un solo guion; así conservo los guiones internos de títulos como "spider-man" o "mission-impossible"
+            titulo_url = re.sub(r"[^a-z0-9]+", "-", titulo.lower()).strip("-")
             # construyo la url de la página de la película en aftercredits
             url = f"https://aftercredits.com/movie/{titulo_url}/"
             # hago la petición a la página de aftercredits simulando un navegador
@@ -667,38 +667,39 @@ class Buscador(Herramienta):
 
             # parseo el html de la respuesta con beautifulsoup
             soup = BeautifulSoup(respuesta.text, "html.parser")
-            # inicializo el valor de escena durante créditos como desconocido
-            during_val = "desconocido"
-            # inicializo el valor de escena después de créditos como desconocido
-            after_val = "desconocido"
+            # extraigo el texto de la página como líneas no vacías
+            lineas = [l.strip() for l in soup.get_text("\n").split("\n") if l.strip()]
 
-            # recorro todos los párrafos de la página
-            for p in soup.find_all("p"):
-                # extraigo el texto del párrafo actual
-                text = p.get_text()
-                # compruebo si el párrafo habla de escenas durante los créditos
-                if "during credits?" in text.lower():
-                    # busco la etiqueta en negrita que contiene la respuesta
-                    strong = p.find("strong") or p.find("b")
-                    # si la encuentro guardo su texto en minúsculas
-                    if strong:
-                        # guardo el valor encontrado para durante los créditos
-                        during_val = strong.get_text().strip().lower()
-                # compruebo si el párrafo habla de escenas después de los créditos
-                if "after credits?" in text.lower():
-                    # busco la etiqueta en negrita que contiene la respuesta
-                    strong = p.find("strong") or p.find("b")
-                    # si la encuentro guardo su texto en minúsculas
-                    if strong:
-                        # guardo el valor encontrado para después de los créditos
-                        after_val = strong.get_text().strip().lower()
+            # defino una función que devuelve la respuesta sí/no que sigue a una pregunta concreta
+            def _respuesta_tras(marcador: str) -> str:
+                # recorro las líneas buscando la pregunta
+                for i, l in enumerate(lineas):
+                    # compruebo si la línea contiene el marcador de la pregunta
+                    if marcador in l.lower():
+                        # miro las líneas inmediatamente siguientes buscando un sí o un no
+                        for j in range(i + 1, min(i + 4, len(lineas))):
+                            # normalizo la línea candidata a minúsculas
+                            candidata = lineas[j].strip().lower()
+                            # devuelvo la respuesta si es un sí o un no reconocible
+                            if candidata in ("yes", "no", "sí", "si"):
+                                # devuelvo la respuesta encontrada
+                                return candidata
+                        # devuelvo desconocido si tras la pregunta no había un sí/no claro
+                        return "desconocido"
+                # devuelvo desconocido si la pregunta no aparece en la página
+                return "desconocido"
+
+            # obtengo la respuesta para escenas durante los créditos (formato actual de aftercredits)
+            during_val = _respuesta_tras("are there any extras during the credits?")
+            # obtengo la respuesta para escenas después de los créditos
+            after_val = _respuesta_tras("are there any extras after the credits?")
 
             # compruebo si alguno de los dos valores indica que sí hay escena
-            if "yes" in during_val or "yes" in after_val:
+            if during_val in ("yes", "sí", "si") or after_val in ("yes", "sí", "si"):
                 # devuelvo que sí tiene escenas post créditos
                 return {"ok": True, "post_creditos": "sí"}
-            # compruebo si ambos valores indican que no hay escena
-            elif "no" in during_val and "no" in after_val:
+            # compruebo si ambos valores indican explícitamente que no hay escena (evito el substring "no" que también aparece dentro de "desconocido")
+            elif during_val == "no" and after_val == "no":
                 # devuelvo que no tiene escenas post créditos
                 return {"ok": True, "post_creditos": "no"}
             # si no se pudo determinar con claridad

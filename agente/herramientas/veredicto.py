@@ -32,7 +32,7 @@ class Veredicto:
         # instancio el cliente de groq con su clave de api
         self.cliente = Groq(api_key=os.getenv("GROQ_API_KEY"))
         # guardo el nombre del modelo que se usará en todas las llamadas
-        self.modelo = "llama-3.3-70b-versatile"
+        self.modelo = "qwen/qwen3.6-27b"
 
     # — método auxiliar: llamada al llm —
 
@@ -57,6 +57,8 @@ class Veredicto:
             temperature=0.7,
             # limito el número máximo de tokens según el parámetro recibido
             max_tokens=max_tokens,
+            # desactivo el razonamiento del modelo qwen para que no consuma el presupuesto de tokens ni ensucie la respuesta
+            reasoning_effort="none",
         )
         # devuelvo el texto de la respuesta sin espacios sobrantes
         return respuesta.choices[0].message.content.strip()
@@ -444,6 +446,8 @@ Sin texto adicional, solo el JSON.
             temperature=0.8,
             # limito el número máximo de tokens según el parámetro recibido
             max_tokens=max_tokens,
+            # desactivo el razonamiento del modelo qwen para que no consuma el presupuesto de tokens ni ensucie la respuesta
+            reasoning_effort="none",
         )
         # devuelvo el texto de la respuesta sin espacios sobrantes
         return respuesta.choices[0].message.content.strip()

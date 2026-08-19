@@ -60,7 +60,7 @@ class Buscador(Herramienta):
             # pido al modelo el título original en inglés de la película
             resp = self.groq.chat.completions.create(
                 # uso un modelo rápido y económico para esta tarea sencilla
-                model="llama-3.3-70b-versatile",
+                model="qwen/qwen3.6-27b",
                 # construyo el mensaje de usuario con instrucciones y ejemplos
                 messages=[{
                     # defino el rol como usuario
@@ -76,6 +76,8 @@ class Buscador(Herramienta):
                 temperature=0,
                 # limito la respuesta a pocos tokens porque solo necesito un título
                 max_tokens=20,
+                # desactivo el razonamiento del modelo qwen para que no consuma el presupuesto de tokens ni ensucie la respuesta
+                reasoning_effort="none",
             )
             # extraigo el texto de la respuesta y quito espacios sobrantes
             raw = resp.choices[0].message.content.strip()
